@@ -1,8 +1,10 @@
-Physicochemical and Sensory Analysis for Wine Quality  
-by J. Moon
-2017
+# Physicochemical and Sensory Analysis for Wine Quality  
+### July 2017, by Jude Moon
+
 ========================================================
 
+# 1.Overview
+In this project, I will use a white wine quality data set for [Portuguese "Vinho Verde" wine](http://www.vinhoverde.pt/en/about-vinho-verde), whose data were collected and published by [Cortez et al (2009)](http://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub). This tidy data set contains 4,898 white wines with 11 variables on quantifying the physicochemical properties of each wine. At least 3 wine experts rated the quality of each wine, providing a rating between 0 (very bad) and 10 (very excellent). Details and units of the variables are provided [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt). The objectives of the analysis is to explore data to determine (1) whether any relationship between the physicochemical properties and sensory quality exists and (2) if so, which physicochemical properties are the most effective to describe qualty, in other words, which properties are highly correlated with the quality score. 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Load all of the packages that you end up using
 # in your analysis in this code chunk.
@@ -10,6 +12,10 @@ by J. Moon
 # Notice that the parameter "echo" was set to FALSE for this code chunk.
 # This prevents the code from displaying in the knitted HTML output.
 # You should set echo=FALSE for all code chunks in your file.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
 
 library(ggplot2)
 library(ggthemes)
@@ -36,137 +42,163 @@ library(mvoutlier)
 # Name the dataset 'White Wine quality', 'ww' for simplicity
 ww <- read.csv('wineQualityWhites.csv') 
 ```
+------
+# 2. Analysis
+## 2.1.2 Univariate Plots Section
 
-# 1. Analysis
-## 1.1.1 Univariate Plots Section
+### Data Summary: 
+#### What are the data types of the columns?
+```{r echo=FALSE}
+# Display data type of each column
+str(ww)
+```
+All columns are numeric or continuous, except X and quality. X is wine sample ID, so changing to factor data type would make more sense.
 
-### Quality score
+#### What are the data ranges of variables?
 ```{r echo=FALSE, Univariate_Plots_Summary}
 # Change X from int to factor
 ww$X <- factor(ww$X, ordered = F)  
-
-str(ww)
 summary(ww)
 ```
-Comment: the dataset consisted of total 13 variables, including wine ID, sensory quality score, and 11 physicochemical properties, with approximately 4,900 observations. 
+The data range of each variable varies, e.g., volatile.acidity ranges from 0.08 to 1.1 while total.sulfur.dioxide ranges from 9 to 440. This suggests that data transformation such as standardazation might require to compare two variables. 
 
+#### Is there any missing values (na) or any zero values?
 ```{r echo=FALSE, Univariate_Plots_Missing}
-# Check if there are any missing values
-summary(is.na(ww))
+#summary(is.na(ww))
 summary(ww == 0)
 ```
-Comment: there was no missing value. Variable citric.acid had 19 zeros. I will assume that they are true zeros.
+There is no missing value, but Variable citric.acid has 19 zeros. I will assume that they are true zeros.
 
+### Quality score: response variable or label feature
+#### Can I engineer this variable simpler to interpret?
+I will create categorical variables of quality which is integer variable ranged from 3 to 9. One way is to convert into 7 classes (called **quality.order**) and the other is into 3 classes(called **quality.con** and **quality.lib**), where I can simply interpret as bad, ok, and good quality.
 ```{r echo=FALSE, Univariate_Plots_quality.order}
-# Create new varaible
-# quality is sensory score ranged from 3 to 9 and can be ordered factor. 
-# I still want to keep the integer variable for regression analysis, so created new variable called quality.order.
-ww$quality.order <- factor(ww$quality, levels = c('3', '4', '5', '6', '7', '8', '9'), ordered = T)
+# Change from int to ordered factor
+ww$quality.order <- factor(ww$quality, ordered = T)
+str(ww$quality.order)
+```
+```{r}
+st
+```
 
+#### What is distribution of quality?
+```{r echo=FALSE, Univariate_Plots_quality.order}
+# Create a bar plot, similar to histogram
 plot(ww$quality.order, xlab = 'quality.order') 
 
-# Calculate percentage of each score to total
-portion.3 <- sum(ww$quality == 3) / length(ww$quality) * 100
-portion.4 <- sum(ww$quality == 4) / length(ww$quality) * 100
-portion.5 <- sum(ww$quality == 5) / length(ww$quality) * 100
-portion.6 <- sum(ww$quality == 6) / length(ww$quality) * 100
-portion.7 <- sum(ww$quality == 7) / length(ww$quality) * 100
-portion.8 <- sum(ww$quality == 8) / length(ww$quality) * 100
-portion.9 <- sum(ww$quality == 9) / length(ww$quality) * 100
+# Create a function to generate a proportion table in percentage
+ProportionTable <- function(col) {
+  freq <- table(col)
+  prop <- (freq/length(col))*100
+  return(prop)
+}
 
-# Calculate accumulative percentages
-portion.4 + portion.5 + portion.6 + portion.7 + portion.8
-portion.5 + portion.6 + portion.7
-portion.5 + portion.6
-portion.6
+# Create a proportion table for quality.order
+ProportionTable(ww$quality.order)
 ```
-Comment: quality score 6 was the most common white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5% respectively. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. Based on variable quality, variable quality.order was created as a ordered factor.   
+Quality is normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5% respectively. 
 
+#### What are the distributions of 3-classes variables?
 ```{r echo=FALSE, Univariate_Plots_quality.bucket}
-# Create new varaible by cutting into buckets
-ww$quality.bucket <- cut(ww$quality, c(2, 5, 6, 9))
+# Create new varaibles by cutting into 3 buckets
+ww$quality.con <- cut(ww$quality, c(2, 5, 6, 9)) # conservative cutoff
+ww$quality.lib <- cut(ww$quality, c(2, 4, 7, 9)) # liberal cutoff
 
-summary(ww$quality.bucket)
+# Craete distribution plots and proportion tables for the new variables
+plot(ww$quality.con, xlab = 'quality.con')
+ProportionTable(ww$quality.con)
+plot(ww$quality.lib, xlab = 'quality.lib')
+ProportionTable(ww$quality.lib)
 ```
-Comment: considering that wines with quality <6 are low quality, 6 are medium quality, and >6 are high quality, I created a new variable called quality.bucket, which separated quality into 3 groups. This might help to find whether there are consistent trends of physicochemical properties among high quality wines compared to the others.
+I created 2 new variables; each includes 3-classes. One is that I named quality.con which cuts off the quality in a conservative way. This considers that wines with the score <6 are low quality, 6 are medium quality, and >6 are high quality. 
+
+The other I named quality.lib separates quality in a liberal way, where wine with a wide ranged score from 5 to 7 are considered as ok quality, <5 are low quality, and >7 are high quality.
+
+The distribution of quality.con is relatively even in the 3 classes, while that of quality.lib varies. The purpose of using quality.con would be to find general trends of low and high quality wine, while quality.lib would be better for screening exceptionally low or high quality wine.
+
+### Variables related to features
+I sorted some of variables into a related features to help organize variables as a meaningful order.
+| Order |     Feature     |                        Variables                        |
+|:-----:|:---------------:|:-------------------------------------------------------:|
+|   1   |       body      |                         alcohol                         |
+|   2   |      sweet      |                      residual.sugar                     |
+|   3   |      salty      |                        chlorides                        |
+|   4   |      dense      |                         density                         |
+|   5   | sour or acidity |   pH, fixed.acidity, volatile.acidity, and citric.acid  |
+|   6   |   preservative  | sulphates,total.sulfur.dioxide, and free.sulfur.dioxide |
 
 ### Alcohol content
+#### How the alcohol variable is distributed? Any new variables are needed?
+The weakest and the strongest white wines are 8.0% and 14.2% of alcohol, respectively. The distributions of < 9.5, 9.5-10.4, 10.5-11.4, and >11.4 are even, so I created a new variable called **alcohol.bucket**, which separated alcohol content into 4 classes. This might help with further analysis on its relationship with other variables.
+
+Additionally, as a conventionaly rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth. In addition to alcohol.bucket, I created a new variable called **alcohol.body**, which separated alcohol content into 3 classes. This might help to understand relationship between the preference of wine body and wine quality.
 ```{r echo=FALSE, Univariate_Plots_alcohol}
-# Create new varaible by cutting into buckets
-# I still want to keep the numeric variable for regression analysis, so created new variable called alcohol.bucket.
+# Create new varaibles by cutting into buckets
 ww$alcohol.bucket <- cut(ww$alcohol,
-                             c(7.9, 9.4, 10.4, 11.4, 14.20))
-
-# Explore distribution of alcohol variable
-qplot(x = alcohol, data = ww, binwidth = 0.1, color = I('black'), fill = alcohol.bucket)+
-  scale_x_continuous(limits = c(min(ww$alcohol), max(ww$alcohol)),
-                     breaks = seq(8.5, max(ww$alcohol), 1))
-
-summary(ww$alcohol)
-
-table(ww$alcohol.bucket)
-```
-Comment: the weakest and the strongest white wines were 8.0% and 14.2% of alcohol, respectively. The distributions of < 9.5, 9.5-10.4, 10.5-11.4, and >11.4 were even, so I created a new variable called alcohol.bucket, which separated alcohol content into 4 groups. This might help with further analysis on its relationship with other variables.
-
-Additional info: As a general rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth.
-
-```{r echo=FALSE, Univariate_Plots_alcohol}
-# Create new varaible by cutting into buckets
+                             c(7.9, 9.4, 10.4, 11.4, 14.20)) # evenly cutting into 4 classes
 ww$alcohol.body <- cut(ww$alcohol,
-                             c(7, 11, 13, 15))
+                             c(7, 11, 13, 15)) # conventional grouping into 3 classes
+
+# Create a function to generate a histogram with color encoding of categorical variable,
+# a table, and a proportion table
+plot1 <- function(col1, col2) {
+  a <- qplot(x = col1, data = ww, binwidth = 0.1, color = I('black'), fill = col2)+
+  scale_x_continuous(limits = c(min(col1), max(col1)),
+                     breaks = seq(8, max(col1), 1))
+  b <- table(col2)
+  c <- ProportionTable(col2)
+  return(list(a, b, c))
+}
 
 # Explore distribution of alcohol variable
-qplot(x = alcohol, data = ww, binwidth = 0.1, color = I('black'), fill = alcohol.body)+
-  scale_x_continuous(limits = c(min(ww$alcohol), max(ww$alcohol)),
-                     breaks = seq(8, max(ww$alcohol), 1))
-
-table(ww$alcohol.body)
-
-# Calculate percentage of wines with alcohol less than or equal to 11%
-sum(ww$alcohol <= 11) / length(ww$alcohol) * 100  
+plot1(ww$alcohol, ww$alcohol.bucket)
+plot1(ww$alcohol, ww$alcohol.body)
 ```
-Comment: Most white wines (68%) were light-bodied (acohol <= 11). In addition to alcohol.bucket, I created a new variable called alcohol.body, which separated alcohol content into 3 groups. This might help to understand relationship between the preference of wine body and wine quality.
+The distribution is little bit skewed to the left with mostly (68%) being light-bodied (acohol <= 11). But I don't think that it requires transformation because the skewness seems minor. 
 
 ### Sugar content
+#### How the residual.sugar variable is distriubted? Any new variables are needed?
 ```{r echo=FALSE, warning=FALSE, message=FALSE, Univariate_Plots_residual.sugar}
 # Explore distribution of residual.sugar variable
 sugar.dist <- qplot(x = residual.sugar, data = ww, binwidth =0.1)+
   scale_x_continuous(limits = c(min(ww$residual.sugar), max(ww$residual.sugar)),
                      breaks = seq(min(ww$residual.sugar), max(ww$residual.sugar), 10))
 
+# Create new varaible by cutting into 2 buckets
+ww$sugar.bucket <- cut(ww$residual.sugar, c(0.5, 2.5, 32)) 
+
 # Transform x to log10
-sugar.dist.log <- qplot(x = residual.sugar, data = ww, binwidth = 0.02)+
+sugar.dist.log <- qplot(x = residual.sugar, data = ww, 
+                        binwidth = 0.02, fill = sugar.bucket)+
   scale_x_log10()
 
-sugar.dist.log1.1 <- qplot(x = residual.sugar, data = ww, binwidth = 0.1)+
-  scale_x_log10() + 
-  xlim(min(ww$residual.sugar), 2.5)
-
-sugar.dist.log1.2 <- qplot(x = residual.sugar, data = ww, binwidth = 0.5)+
-  scale_x_log10() + 
-  xlim(2.5, quantile(ww$residual.sugar, 0.999))
-
-grid.arrange(sugar.dist, sugar.dist.log, sugar.dist.log1.1, sugar.dist.log1.2, ncol=2)
-
-summary(ww$residual.sugar)
-
-# Calculate percentages of wines with less than 1 g/L and wines with greater than 45 g/L
-sum(ww$residual.sugar < 1) / length(ww$residual.sugar) * 100
-sum(ww$residual.sugar > 45) / length(ww$residual.sugar) * 100
-
-# Calculate percentages of wines with less than or equal to 3 g/L
-sum(ww$residual.sugar <= 2.5) / length(ww$residual.sugar) * 100
+grid.arrange(sugar.dist, sugar.dist.log,  ncol=2)
+ProportionTable(ww$sugar.bucket)
 ```
-Comment: the distribution of residual sugar content was skewed with a right long tail. Thus, the log10 transformation helped better understand the distribution of sugar content. It appeared to be bimodal with sugar content peaking at around 1.5 or so and again at 8 g/L or so. 
-According to data info notes, it is rare to find wines with less than 1 g/L; and wines with greater than 45 g/L are considered sweet. The white wine less than 1 g/L was 1.6% of the total. And sweet white wine was only 0.02% of the total, which was very small. I am not sure if "Vinho Verde" white wines are not sweet in general, or if the cutoff of sugar content is more for red wine in general. 
+The distribution of residual sugar content is skewed with a right long tail. Thus, the log10 transformation helps better understand the distribution of sugar content. It appears to be bimodal with sugar content peaking at around 1.5 or so and again at 8 g/L or so. I created a new variable called **sugar.bucket**, which separated sugar content into 2 classes: <=2.5 (35%) and >2.5 (65%). 
 
+According to [data info notes](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt), it is rare to find wines with less than 1 g/L of sugar. And wines with greater than 45 g/L sugar are considered sweet.
+#### What percentage of white wines are sugar content less than 1 g/L sugar or greater than 45 g/L sugar?
+```{r echo=FALSE, warning=FALSE, message=FALSE, Univariate_Plots_residual.sugar}
+# Craete a function to calculate percentages of wines with less than the value i 
+proportion <- function(col, i) {
+  prop <- sum(col < i) / length(col) * 100
+  return(prop)
+}
+
+proportion(ww$residual.sugar, 1)
+100-proportion(ww$residual.sugar, 45)
+```
+The white wine less than 1 g/L is 1.6% of the total. And sweet white wine is only 0.02% of the total, which is very small. I am not sure if "Vinho Verde" white wines are not sweet in general, or if the cutoff of sugar content is more for red wine in general. 
+#### How the sugar contents are distriubted for red wines?
 ```{r echo=FALSE, Univariate_Plots_residual.sugar from red wines}
 rw <- read.csv('wineQualityReds.csv')
 summary(rw$residual.sugar)
 ```
-Comment: just quick overviewing the stats of residual sugar content from red wines, the Midian was 2.2 and the max was 15.5 g/L which were a lot lower than white wines. Thus, the cutoff (45 g/L) of sugar content for sweet wines is not for red wines either.
+Just quick overviewing the stats of residual sugar content from red wines, the Midian is 2.2 and the max is 15.5 g/L which are a lot lower than white wines. Thus, the cutoff (45 g/L) of sugar content for sweet wines is not for red wines either.
 
 ### NaCl(salt) content
+#### How the nacl content variable is distriubted?
 ```{r echo=FALSE, warning=FALSE, Univariate_Plots_chlorides}
 # Explore distribution of chlorides variable
 NaCl.dist <- qplot(x = chlorides, data = ww, binwidth =0.001)+
@@ -178,15 +210,15 @@ NaCl.dist.log <- qplot(x = chlorides, data = ww, binwidth =0.01)+
   scale_x_log10()
 
 grid.arrange(NaCl.dist, NaCl.dist.log, ncol=2)
-
 summary(ww$chlorides)
 
-# Calculate percentages of wines with less than or equal to 0.1 g/L
-sum(ww$chlorides <= 0.1) / length(ww$chlorides) * 100
+# Calculate percentages of wines with less than 0.1 g/L
+proportion(ww$chlorides, 0.1)
 ```
-Comment: the distribution of NaCl content was skewed with a right long tail. Thus, the log10 transformation helped better understand the distribution of NaCl content, which looked close to normal. A majority (97.8%) of white wines were less than 0.1 g/L in NaCl content and those between 0.04 and 0.05 were common.
+The distribution of NaCl content is skewed with a right long tail. Thus, the log10 transformation helps better understand the distribution of NaCl content, which looks close to normal. A majority (97.8%) of white wines are less than 0.1 g/L in NaCl content and those between 0.04 and 0.05 are common.
 
 ### Density
+#### How the density variable is distriubted?
 ```{r echo=FALSE, warning=FALSE, Univariate_Plots_density}
 # Explore distribution of density variable
 density.dist <- qplot(x = density, data = ww, binwidth =0.0001)+
@@ -199,17 +231,15 @@ density.dist.zoom <- qplot(x = density, data = ww, binwidth =0.0001)+
                      breaks = seq(0.980, quantile(ww$density, 0.999), 0.002))
 
 grid.arrange(density.dist, density.dist.zoom, ncol=2)
-
 summary(ww$density)
 
-summary(ww$density > 1)  # count of the wines heavier than water (1 Kg/L)
-
-sum(ww$density > 1) / length(ww$density) * 100  # percentages of wines heavier than water (1 Kg/L)
+# Calculate percentages of wines with less than 1 Kg/L
+100-proportion(ww$density, 1)
 ```
-Comment: the lightest and heaviest wines were 0.9871 and 1.0390 g/L in density, respectively. Most white wines were between 0.9917 and 0.9961 Kg/L in density. Although the distribution was skewed to the right, log and square root transformation did not improve normality. Excluding top 0.1% helped to better understand the distribution. 
-Density possibly contributes to taste of wine. Density depends on the alcohol and sugar contents. The wines heavier than water (1 Kg/L) were very rare (1.6%). 
+The lightest and heaviest wines are 0.9871 and 1.0390 Kg/L in density, respectively. Most white wines are between 0.9917 and 0.9961 Kg/L in density. Although the distribution is skewed to the right, log or square root transformations did not improve normality. Excluding top 0.1% helps to better understand the distribution. 
+Density possibly contributes to taste of wine. Density depends on the alcohol and sugar contents. The wines heavier than or equal to water (1 Kg/L) are rare (1.9%). 
  
-### Acidity
+### Acidity including pH, fixed.acidity, volatile.acidity, and citric.acid
 #### pH
 ```{r echo=FALSE, warning=FALSE, Univariate_Plots_pH}
 # Explore distribution of pH variable
@@ -219,7 +249,6 @@ qplot(x = pH, data = ww, binwidth =0.01)+
 
 summary(ww$pH)
 ```
-Comment: pH is already in log term so the distribution was normal. The lowest and the highest in pH of white wine were 2.72 and 3.82, respectively. The most common pH was between 3.1 and 3.3.
 
 #### tartaric acid content (nonvolatile or fixed acidity)
 ```{r echo=FALSE, Univariate_Plots_fixed.acidity}
@@ -267,21 +296,28 @@ citric.dist.sqrt <- qplot(x = citric.acid, data = ww, binwidth =0.01)+
   scale_x_sqrt()
 
 grid.arrange(citric.dist, citric.dist.sqrt, ncol=2)
+summary(ww$citric.acid)
 
+summary(ww$citric.acid == 0.49)  # count of the wines with 0.49 g/L citric acid
 # Zoom in the x scale
 qplot(x = citric.acid, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(0.45, 0.55),
                      breaks = seq(0.45, 0.55, 0.01))
 
-summary(ww$citric.acid)
-
-summary(ww$citric.acid == 0.49)  # count of the wines with 0.49 g/L citric acid
 ```
-Comment: (1) tartaric acid: the lowest and highest in tartaric acid content were 3.8 and 14.2 g/L, respectively. Most white wines were between 6.3 and 7.3 g/L in tartaric acid. (2) acetic acid: the lowest and highest in acetic acid content were 0.08 and 1.1 g/L, respectively. Most white wines were between 0.21 and 0.32 g/L in acetic acid. (3) citric acid: the lowest and highest in citric acid content were 0 and 1.66 g/L, respectively. There were 19 zeros. Most white wines were between 0.27 and 0.39 g/L in citric acid. There was unusual high count at 0.49 g/L. 
-Because the distributions of all three variables were skewed to the right, log transformation helped to get better distribution for tartaric and acetic acids, and the values of citric acid (having zeros) were square root transformed. 
-According to the data info notes, excess amount of acetic acid can cause an unpleasant and vinegar taste, while citric acid can add freshness and flavor to wines. Thus, the 4 variables indicating acidity of wine are likely related to each other as well as to wine quality. 
+(1) pH is already in log term so the distribution is normal. The lowest and the highest in pH of white wine are 2.72 and 3.82, respectively. The most common pH was between 3.1 and 3.3.
 
-### Antimicrobial and antioxidant contents
+(2) tartaric acid: the lowest and highest in tartaric acid content are 3.8 and 14.2 g/L, respectively. Most white wines are between 6.3 and 7.3 g/L in tartaric acid. 
+
+(3) acetic acid: the lowest and highest in acetic acid content are 0.08 and 1.1 g/L, respectively. Most white wines are between 0.21 and 0.32 g/L in acetic acid. 
+
+(4) citric acid: the lowest and highest in citric acid content are 0 and 1.66 g/L, respectively. There are 19 zeros. Most white wines are between 0.27 and 0.39 g/L in citric acid. There is unusual high count at 0.49 g/L. 
+
+Because the distributions of the three acid variables are skewed to the right, log transformation helps to get better distribution for tartaric and acetic acids, and the values of citric acid (having zeros) are square root transformed. 
+
+According to the [data info notes](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt), excess amount of acetic acid can cause an unpleasant and vinegar taste, while citric acid can add freshness and flavor to wines. Thus, the 4 variables indicating acidity of wine are likely related to each other as well as to wine quality. 
+
+### Antimicrobial and antioxidant contents, including sulphates, total.sulfur.dioxide, and free.sulfur.dioxide
 #### K2SO4 content (potassium sulphate)
 ```{r echo=FALSE, Univariate_Plots_sulphates}
 # Explore distsribution of sulphates variable
@@ -333,43 +369,57 @@ summary(ww$free.sulfur.dioxide > 50)  # count of the wines with higher than 50 m
 
 sum(ww$free.sulfur.dioxide > 50) / length(ww$free.sulfur.dioxide) * 100  # percentages of wines with less than 50 mg/L
 ```
-Comment: (1) sulphates: the lowest and highest in sulphates content were 0.22 and 1.08 g/L, respectively. Most white wines were between 0.41 and 0.55 g/L in sulphates. (2) total SO2: the lowest and highest in total SO2 content were 9 and 440 mg/L, respectively. Most white wines were between 108 and 167 mg/L in total SO2. (3) free SO2: the lowest and highest in free SO2content were 2 and 289 mg/L, respectively. Most white wines were between 23 and 46 mg/L in free SO2. 
-Because the distributions of all three variables were skewed to the right, log transformation helped to get better distribution for sulphates and free SO2, and the values of total SO2 were square root transformed. 
-According to the data info notes, free SO2 prevents microbial growth and the oxidation of wine, but over 50 mg/L of free SO2 (about 18%), SO2 becomes evident in the nose and taste of wine. Thus, free SO2 is likely related to wine quality. In addition, sulfates are an additive that contributes to SO2 gas, and so all three variables indicating sulfur content are likely related to each other.
+(1) sulphates: the lowest and highest in sulphates content are 0.22 and 1.08 g/L, respectively. Most white wines are between 0.41 and 0.55 g/L in sulphates. 
+
+(2) total SO2: the lowest and highest in total SO2 content are 9 and 440 mg/L, respectively. Most white wines are between 108 and 167 mg/L in total SO2. 
+
+(3) free SO2: the lowest and highest in free SO2content are 2 and 289 mg/L, respectively. Most white wines are between 23 and 46 mg/L in free SO2. 
+
+Because the distributions of all three variables are skewed to the right, log transformation helps to get better distribution for sulphates and free SO2. And the values of total SO2 are square root transformed. 
+
+According to the [data info notes](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt), free SO2 prevents microbial growth and the oxidation of wine, but over 50 mg/L of free SO2 (about 18%), SO2 becomes evident in the nose and taste of wine. Thus, free SO2 is likely related to wine quality. In addition, sulfates are an additive that contributes to SO2 gas, and so all three variables indicating sulfur content are likely related to each other.
 
 
-
-## 1.1.2 Univariate Analysis
+## 2.1.2 Univariate Analysis
 
 ### What is the structure of your dataset?
-There were 4,898 white wines in the dataset with 1 sensory data (quality score) and 11 physicochemical properties (alcohol, sugar, NaCl, tartaric acid, acetic acid, citric acid, K2SO4, total and free SO2 contents, pH, and density).
-All physicochemical properties were numeric variables, and the quality variable was integer.
+There were 4,898 white wines in the dataset with 1 sensory data (quality score) and 11 physicochemical properties (alcohol, sugar, NaCl, tartaric acid, acetic acid, citric acid, K2SO4, total and free SO2 contents, pH, and density). All physicochemical properties were numeric variables, and the quality variable was integer.
 
 Other observations:
-The most common white wines were quality score of 6.
-Alcohol content ranged from 8 to 14.2% and the median alcohol was 10.4%.
-Sugar content ranged from 0.6 to 65.8 g/L and most white wines were around 2 and 10 g/L.
-Salt content was less than 0.1 g/L for most white wines (98%) with the median of 0.043 g/L.
-Acidity ranged from pH 2.72 to pH 3.82 with the median of pH 3.18.
-The medians of tartaric, acetic, and citric acid contents were 6.8, 0.26, and 0.32 g/L, respectively.
-The medians of K2SO4, total and free SO2 contents were 0.47 g/L, 134 mg/L, and 34 mg/L, respectively.
-Density ranged from 0.9871 to 1.0390 Kg/L with the median of 0.9937 Kg/L.
+- The most common white wines were quality score of 6.
+- Alcohol content ranged from 8 to 14.2% and the median alcohol was 10.4%.
+- Sugar content ranged from 0.6 to 65.8 g/L and most white wines were around 2 and 10 g/L.
+- Salt content was less than 0.1 g/L for most white wines (98%) with the median of 0.043 g/L.
+- Density ranged from 0.9871 to 1.0390 Kg/L with the median of 0.9937 Kg/L.
+- Acidity ranged from pH 2.72 to pH 3.82 with the median of pH 3.18.
+- The medians of tartaric, acetic, and citric acid contents were 6.8, 0.26, and 0.32 g/L, respectively.
+- The medians of K2SO4, total and free SO2 contents were 0.47 g/L, 134 mg/L, and 34 mg/L, respectively.
+
 
 ### What is/are the main feature(s) of interest in your dataset?
 The main feature in the data set was quality score. I would like to determine which physicochemical properties (input variables) are best for predicting the quality of white wine (output variable). The measurements of physicochemical properties could be responsible for smell and taste of white wine. For examples, sugar for sweetness, NaCl for saltiness, acidity for sourness, acetic acid for vinegary taste, citric acid for citrus flavor, and free SO2 for pungent odor. I think that the balance among these flavors can contribute to the wine quality, thus some combination of physicochemical properties can be used to complement sensory tests or build a predictive model to sensory tests.
 
 ### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
-The article (Cortez 2009) hinted that there is relationship between alcohol and residual sugar contents since alcohol production depends on grape sugar level and fermentation process. After reading some basics about wine tasting, too much or too little of alcohol, sweets, acids are not preferred and balancing among the ingredients is required for good quality. Focusing on high quality wines (>6) to compare how physicochemical properties of high quality wines are distributed differently from the others might help to understand any consistent trends for high quality. 
+The article (Cortez 2009) hinted that there is relationship between alcohol and residual sugar contents since alcohol production depends on grape sugar level and fermentation process. After reading some basics about wine tasting, too much or too little of alcohol, sweets, acids are not preferred and balancing among the ingredients is required for good quality. Focusing on high quality wines to compare how physicochemical properties of high quality wines are distributed differently from the others might help to understand any consistent trends for high quality. 
 
 ### Did you create any new variables from existing variables in the dataset?
-I created 4 new variables including quality.order, quality.bucket, alcohol.bucket, and alcohol.body. (1) Variable quality.order is a variable changed from existing variable quality, which was numeric, to ordered factor. (2) Variable quality.bucket is a variable also changed from variable quality to categorical with 3 groups. (3) Variable alcohol.bucket is a variable changed from existing variable alcohol, by evenly cutting numbers into categories. (4) Variable alcohol.body is a variable also changed from alcohol, by following conventional body levels of wines. Reasoning: ordered or categorical factors are useful to color data as well as draw statistics on plots for further analysis. 
+I created 6 new variables including quality.order, quality.con, quality.lib, alcohol.bucket, alcohol.body, sugar.bucket. 
+
+- quality.order is a variable changed from existing variable quality, which was numeric, to ordered factor with 7 levels.
+- quality.con is a variable also changed from variable quality, by cutting into evenly distributed 3 levels. 
+- quality.lib is a variable also changed from variable quality, by cutting into unproportionally distributed 3 levels.
+- alcohol.bucket is a variable changed from existing variable alcohol, by evenly cutting numbers into 4 levels. 
+- alcohol.body is a variable also changed from alcohol to 3-leveled categoroy, by following conventional body levels of wines.
+- sugar.bucket is a variable changed from existing variable residual.sugar and separated into 2 levels guided by bimodal distribution. 
+
+Reasoning: ordered or categorical factors are useful to color data as well as draw statistics on plots for further analysis.
 
 ### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
 I log- or square root-transformed the right skewed distributions. The distributions of NaCl, sugar, tartaric and acetic acids, K2SO4, free SO2 were strongly skewed to the right, so log-transformation was used to reduce the strong right skewness. The transformed distribution for sugar appeared bimodal with the sugar peaking at around 1.5 or so and again at 8 g/L or so. Some wines had zero values of citric acid, so square root transformation was applied to reduce the right skewness for citric acid. The distribution of total SO2 was weakly skewed, so squared root transformation was used.
 
 
 
-## 1.2.1 Bivariate Plots Section
+## 2.2.1 Bivariate Plots Section
 
 ### Multivariate Outliners
 ```{r echo=FALSE, message=FALSE, outlier}
@@ -755,7 +805,7 @@ by(ww$citric.acid, ww$citric.acid == 0.49, summary)
 by(ww$quality, ww$citric.acid == 0.49, summary)
 ```
 
-## 1.2.2 Bivariate Analysis
+## 2.2.2 Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
 The scatterplot matrix, boxplots and density plots grouped by quality.bucket, consistently showed relationship of quality with alcohol and density, and to a lesser extent with NaCl, acetic acid, and total SO2. The highest correlation r values with quality were alcohol and density, but were not that strong: 0.436 and -0.307, respectively. And none of single variable can explain the variance in quality score more than 20%. I wonder if combination of two or more variables can make better prediction model for quality. 
@@ -769,7 +819,7 @@ The correlations between density and alcohol and between density and sugar were 
 Of physicochemical properties, the strongest correlation between a single variable and quality was alcohol and quality. Wine with higher content of alcohol tended to be high in quality. Nonetheless, alcohol was explaining 20% of the variance in quality, thus alcohol cannot be an only parameter for quality prediction model.
 
 
-## 1.3.1 Multivariate Plots Section
+## 2.3.1 Multivariate Plots Section
 
 ### PCA
 
@@ -1062,7 +1112,7 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 
 
 
-## 1.3.2 Multivariate Analysis
+## 2.3.2 Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
 
@@ -1072,9 +1122,9 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 
 ------
 
-# 2. Final Plots and Summary
+# 3. Final Plots and Summary
 
-### 2.1 Plot One
+### 3.1 Plot One
 ```{r echo=FALSE, Plot_One}
 
 ```
@@ -1082,7 +1132,7 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 ### Description One
 
 
-### 2.2 Plot Two
+### 3.2 Plot Two
 ```{r echo=FALSE, Plot_Two}
 
 ```
@@ -1090,7 +1140,7 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 ### Description Two
 
 
-### 2.3 Plot Three
+### 3.3 Plot Three
 ```{r echo=FALSE, Plot_Three}
 
 ```
@@ -1099,4 +1149,7 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 
 ------
 
-# 3. Reflection
+# 4. Reflection
+# 5. Sources
+- [relative frequency by a column]( http://www.r-tutor.com/elementary-statistics/qualitative-data/relative-frequency-distribution-qualitative-data)
+- [returning multiple objects in function](https://stackoverflow.com/questions/8936099/returning-multiple-objects-in-an-r-function)
