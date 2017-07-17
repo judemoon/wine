@@ -1,0 +1,1102 @@
+Physicochemical and Sensory Analysis for Wine Quality  
+by J. Moon
+2017
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(ggthemes)
+library(gridExtra)
+library(dplyr)
+library(alr3)
+library(reshape2)
+library(tidyr)
+library(GGally)
+library(scales)
+library(memisc)
+library(lattice)
+library(MASS)
+library(car)
+library(devtools)
+library(knitr)
+library(plyr)
+library(mvoutlier)
+
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+# Name the dataset 'White Wine quality', 'ww' for simplicity
+ww <- read.csv('wineQualityWhites.csv') 
+```
+
+# 1. Analysis
+## 1.1.1 Univariate Plots Section
+
+### Quality score
+```{r echo=FALSE, Univariate_Plots_Summary}
+# Change X from int to factor
+ww$X <- factor(ww$X, ordered = F)  
+
+str(ww)
+summary(ww)
+```
+Comment: the dataset consisted of total 13 variables, including wine ID, sensory quality score, and 11 physicochemical properties, with approximately 4,900 observations. 
+
+```{r echo=FALSE, Univariate_Plots_Missing}
+# Check if there are any missing values
+summary(is.na(ww))
+summary(ww == 0)
+```
+Comment: there was no missing value. Variable citric.acid had 19 zeros. I will assume that they are true zeros.
+
+```{r echo=FALSE, Univariate_Plots_quality.order}
+# Create new varaible
+# quality is sensory score ranged from 3 to 9 and can be ordered factor. 
+# I still want to keep the integer variable for regression analysis, so created new variable called quality.order.
+ww$quality.order <- factor(ww$quality, levels = c('3', '4', '5', '6', '7', '8', '9'), ordered = T)
+
+plot(ww$quality.order, xlab = 'quality.order') 
+
+# Calculate percentage of each score to total
+portion.3 <- sum(ww$quality == 3) / length(ww$quality) * 100
+portion.4 <- sum(ww$quality == 4) / length(ww$quality) * 100
+portion.5 <- sum(ww$quality == 5) / length(ww$quality) * 100
+portion.6 <- sum(ww$quality == 6) / length(ww$quality) * 100
+portion.7 <- sum(ww$quality == 7) / length(ww$quality) * 100
+portion.8 <- sum(ww$quality == 8) / length(ww$quality) * 100
+portion.9 <- sum(ww$quality == 9) / length(ww$quality) * 100
+
+# Calculate accumulative percentages
+portion.4 + portion.5 + portion.6 + portion.7 + portion.8
+portion.5 + portion.6 + portion.7
+portion.5 + portion.6
+portion.6
+```
+Comment: quality score 6 was the most common white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5% respectively. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. Based on variable quality, variable quality.order was created as a ordered factor.   
+
+```{r echo=FALSE, Univariate_Plots_quality.bucket}
+# Create new varaible by cutting into buckets
+ww$quality.bucket <- cut(ww$quality, c(2, 5, 6, 9))
+
+summary(ww$quality.bucket)
+```
+Comment: considering that wines with quality <6 are low quality, 6 are medium quality, and >6 are high quality, I created a new variable called quality.bucket, which separated quality into 3 groups. This might help to find whether there are consistent trends of physicochemical properties among high quality wines compared to the others.
+
+### Alcohol content
+```{r echo=FALSE, Univariate_Plots_alcohol}
+# Create new varaible by cutting into buckets
+# I still want to keep the numeric variable for regression analysis, so created new variable called alcohol.bucket.
+ww$alcohol.bucket <- cut(ww$alcohol,
+                             c(7.9, 9.4, 10.4, 11.4, 14.20))
+
+# Explore distribution of alcohol variable
+qplot(x = alcohol, data = ww, binwidth = 0.1, color = I('black'), fill = alcohol.bucket)+
+  scale_x_continuous(limits = c(min(ww$alcohol), max(ww$alcohol)),
+                     breaks = seq(8.5, max(ww$alcohol), 1))
+
+summary(ww$alcohol)
+
+table(ww$alcohol.bucket)
+```
+Comment: the weakest and the strongest white wines were 8.0% and 14.2% of alcohol, respectively. The distributions of < 9.5, 9.5-10.4, 10.5-11.4, and >11.4 were even, so I created a new variable called alcohol.bucket, which separated alcohol content into 4 groups. This might help with further analysis on its relationship with other variables.
+
+Additional info: As a general rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth.
+
+```{r echo=FALSE, Univariate_Plots_alcohol}
+# Create new varaible by cutting into buckets
+ww$alcohol.body <- cut(ww$alcohol,
+                             c(7, 11, 13, 15))
+
+# Explore distribution of alcohol variable
+qplot(x = alcohol, data = ww, binwidth = 0.1, color = I('black'), fill = alcohol.body)+
+  scale_x_continuous(limits = c(min(ww$alcohol), max(ww$alcohol)),
+                     breaks = seq(8, max(ww$alcohol), 1))
+
+table(ww$alcohol.body)
+
+# Calculate percentage of wines with alcohol less than or equal to 11%
+sum(ww$alcohol <= 11) / length(ww$alcohol) * 100  
+```
+Comment: Most white wines (68%) were light-bodied (acohol <= 11). In addition to alcohol.bucket, I created a new variable called alcohol.body, which separated alcohol content into 3 groups. This might help to understand relationship between the preference of wine body and wine quality.
+
+### Sugar content
+```{r echo=FALSE, warning=FALSE, message=FALSE, Univariate_Plots_residual.sugar}
+# Explore distribution of residual.sugar variable
+sugar.dist <- qplot(x = residual.sugar, data = ww, binwidth =0.1)+
+  scale_x_continuous(limits = c(min(ww$residual.sugar), max(ww$residual.sugar)),
+                     breaks = seq(min(ww$residual.sugar), max(ww$residual.sugar), 10))
+
+# Transform x to log10
+sugar.dist.log <- qplot(x = residual.sugar, data = ww, binwidth = 0.02)+
+  scale_x_log10()
+
+sugar.dist.log1.1 <- qplot(x = residual.sugar, data = ww, binwidth = 0.1)+
+  scale_x_log10() + 
+  xlim(min(ww$residual.sugar), 2.5)
+
+sugar.dist.log1.2 <- qplot(x = residual.sugar, data = ww, binwidth = 0.5)+
+  scale_x_log10() + 
+  xlim(2.5, quantile(ww$residual.sugar, 0.999))
+
+grid.arrange(sugar.dist, sugar.dist.log, sugar.dist.log1.1, sugar.dist.log1.2, ncol=2)
+
+summary(ww$residual.sugar)
+
+# Calculate percentages of wines with less than 1 g/L and wines with greater than 45 g/L
+sum(ww$residual.sugar < 1) / length(ww$residual.sugar) * 100
+sum(ww$residual.sugar > 45) / length(ww$residual.sugar) * 100
+
+# Calculate percentages of wines with less than or equal to 3 g/L
+sum(ww$residual.sugar <= 2.5) / length(ww$residual.sugar) * 100
+```
+Comment: the distribution of residual sugar content was skewed with a right long tail. Thus, the log10 transformation helped better understand the distribution of sugar content. It appeared to be bimodal with sugar content peaking at around 1.5 or so and again at 8 g/L or so. 
+According to data info notes, it is rare to find wines with less than 1 g/L; and wines with greater than 45 g/L are considered sweet. The white wine less than 1 g/L was 1.6% of the total. And sweet white wine was only 0.02% of the total, which was very small. I am not sure if "Vinho Verde" white wines are not sweet in general, or if the cutoff of sugar content is more for red wine in general. 
+
+```{r echo=FALSE, Univariate_Plots_residual.sugar from red wines}
+rw <- read.csv('wineQualityReds.csv')
+summary(rw$residual.sugar)
+```
+Comment: just quick overviewing the stats of residual sugar content from red wines, the Midian was 2.2 and the max was 15.5 g/L which were a lot lower than white wines. Thus, the cutoff (45 g/L) of sugar content for sweet wines is not for red wines either.
+
+### NaCl(salt) content
+```{r echo=FALSE, warning=FALSE, Univariate_Plots_chlorides}
+# Explore distribution of chlorides variable
+NaCl.dist <- qplot(x = chlorides, data = ww, binwidth =0.001)+
+  scale_x_continuous(limits = c(min(ww$chlorides), max(ww$chlorides)),
+                     breaks = seq(min(ww$chlorides), max(ww$chlorides), 0.1))
+
+# Transform x to log10
+NaCl.dist.log <- qplot(x = chlorides, data = ww, binwidth =0.01)+
+  scale_x_log10()
+
+grid.arrange(NaCl.dist, NaCl.dist.log, ncol=2)
+
+summary(ww$chlorides)
+
+# Calculate percentages of wines with less than or equal to 0.1 g/L
+sum(ww$chlorides <= 0.1) / length(ww$chlorides) * 100
+```
+Comment: the distribution of NaCl content was skewed with a right long tail. Thus, the log10 transformation helped better understand the distribution of NaCl content, which looked close to normal. A majority (97.8%) of white wines were less than 0.1 g/L in NaCl content and those between 0.04 and 0.05 were common.
+
+### Density
+```{r echo=FALSE, warning=FALSE, Univariate_Plots_density}
+# Explore distribution of density variable
+density.dist <- qplot(x = density, data = ww, binwidth =0.0001)+
+  scale_x_continuous(limits = c(min(ww$density), max(ww$density)),
+                     breaks = seq(0.980,  max(ww$density), 0.01))
+
+# Zoom in the x scale
+density.dist.zoom <- qplot(x = density, data = ww, binwidth =0.0001)+
+  scale_x_continuous(limits = c(min(ww$density), quantile(ww$density, 0.999)),
+                     breaks = seq(0.980, quantile(ww$density, 0.999), 0.002))
+
+grid.arrange(density.dist, density.dist.zoom, ncol=2)
+
+summary(ww$density)
+
+summary(ww$density > 1)  # count of the wines heavier than water (1 Kg/L)
+
+sum(ww$density > 1) / length(ww$density) * 100  # percentages of wines heavier than water (1 Kg/L)
+```
+Comment: the lightest and heaviest wines were 0.9871 and 1.0390 g/L in density, respectively. Most white wines were between 0.9917 and 0.9961 Kg/L in density. Although the distribution was skewed to the right, log and square root transformation did not improve normality. Excluding top 0.1% helped to better understand the distribution. 
+Density possibly contributes to taste of wine. Density depends on the alcohol and sugar contents. The wines heavier than water (1 Kg/L) were very rare (1.6%). 
+ 
+### Acidity
+#### pH
+```{r echo=FALSE, warning=FALSE, Univariate_Plots_pH}
+# Explore distribution of pH variable
+qplot(x = pH, data = ww, binwidth =0.01)+
+  scale_x_continuous(limits = c(min(ww$pH), max(ww$pH)),
+                     breaks = seq(2.7, max(ww$pH), 0.1))
+
+summary(ww$pH)
+```
+Comment: pH is already in log term so the distribution was normal. The lowest and the highest in pH of white wine were 2.72 and 3.82, respectively. The most common pH was between 3.1 and 3.3.
+
+#### tartaric acid content (nonvolatile or fixed acidity)
+```{r echo=FALSE, Univariate_Plots_fixed.acidity}
+# Explore distribution of fixed.acidity variable
+tartaric.dist <- qplot(x = fixed.acidity, data = ww, binwidth =0.1)+
+  scale_x_continuous(limits = c(min(ww$fixed.acidity), max(ww$fixed.acidity)),
+                     breaks = seq(3, max(ww$fixed.acidity), 1))
+
+# Transform x to log10
+tartaric.dist.log <- qplot(x = fixed.acidity, data = ww, binwidth =0.005)+
+  scale_x_log10()
+
+grid.arrange(tartaric.dist, tartaric.dist.log, ncol=2)
+
+summary(ww$fixed.acidity)
+```
+
+
+#### acetic acid content (volatile acidity)
+```{r echo=FALSE, Univariate_Plots_volatile.acidity }
+# Explore distribution of volatile.acidity variable
+acetic.dist <- qplot(x = volatile.acidity, data = ww, binwidth =0.01)+
+  scale_x_continuous(limits = c(min(ww$volatile.acidity), max(ww$volatile.acidity)),
+                     breaks = seq(0.1, max(ww$volatile.acidity), 0.1))
+
+# Transform x to log10
+acetic.dist.log <- qplot(x = volatile.acidity, data = ww, binwidth =0.02)+
+  scale_x_log10()
+
+grid.arrange(acetic.dist, acetic.dist.log, ncol=2)
+
+summary(ww$volatile.acidity)
+
+```
+
+#### citric acid content
+```{r echo=FALSE, warning=FALSE, Univariate_Plots_citric.acid}
+# Explore distribution of citric.acid variable
+citric.dist <- qplot(x = citric.acid, data = ww, binwidth =0.01)+
+  scale_x_continuous(limits = c(min(ww$citric.acid), max(ww$citric.acid)),
+                     breaks = seq(min(ww$citric.acid), max(ww$citric.acid), 0.4))
+
+# Transform x to square root
+citric.dist.sqrt <- qplot(x = citric.acid, data = ww, binwidth =0.01)+
+  scale_x_sqrt()
+
+grid.arrange(citric.dist, citric.dist.sqrt, ncol=2)
+
+# Zoom in the x scale
+qplot(x = citric.acid, data = ww, binwidth =0.01)+
+  scale_x_continuous(limits = c(0.45, 0.55),
+                     breaks = seq(0.45, 0.55, 0.01))
+
+summary(ww$citric.acid)
+
+summary(ww$citric.acid == 0.49)  # count of the wines with 0.49 g/L citric acid
+```
+Comment: (1) tartaric acid: the lowest and highest in tartaric acid content were 3.8 and 14.2 g/L, respectively. Most white wines were between 6.3 and 7.3 g/L in tartaric acid. (2) acetic acid: the lowest and highest in acetic acid content were 0.08 and 1.1 g/L, respectively. Most white wines were between 0.21 and 0.32 g/L in acetic acid. (3) citric acid: the lowest and highest in citric acid content were 0 and 1.66 g/L, respectively. There were 19 zeros. Most white wines were between 0.27 and 0.39 g/L in citric acid. There was unusual high count at 0.49 g/L. 
+Because the distributions of all three variables were skewed to the right, log transformation helped to get better distribution for tartaric and acetic acids, and the values of citric acid (having zeros) were square root transformed. 
+According to the data info notes, excess amount of acetic acid can cause an unpleasant and vinegar taste, while citric acid can add freshness and flavor to wines. Thus, the 4 variables indicating acidity of wine are likely related to each other as well as to wine quality. 
+
+### Antimicrobial and antioxidant contents
+#### K2SO4 content (potassium sulphate)
+```{r echo=FALSE, Univariate_Plots_sulphates}
+# Explore distsribution of sulphates variable
+K2SO4.dist <- qplot(x = sulphates, data = ww, binwidth =0.01)+
+  scale_x_continuous(limits = c(min(ww$sulphates), max(ww$sulphates)),
+                     breaks = seq(0.2, max(ww$sulphates), 0.1))
+
+# Transform x to log10
+K2SO4.dist.log <- qplot(x = sulphates, data = ww, binwidth =0.01)+
+  scale_x_log10()
+
+grid.arrange(K2SO4.dist, K2SO4.dist.log, ncol=2)
+
+summary(ww$sulphates)
+```
+
+#### Total SO2 content
+```{r echo=FALSE, Univariate_Plots_total.sulfur.dioxide}
+# Explore distribution of total.sulfur.dioxide variable
+t.SO2.dist <- qplot(x = total.sulfur.dioxide, data = ww, binwidth = 1)+
+  scale_x_continuous(limits = c(min(ww$total.sulfur.dioxide), max(ww$total.sulfur.dioxide)),
+                     breaks = seq(min(ww$total.sulfur.dioxide), max(ww$total.sulfur.dioxide), 50))
+
+# Transform x to square root
+t.SO2.dist.sqrt <- qplot(x = total.sulfur.dioxide, data = ww, binwidth =0.1)+
+  scale_x_sqrt()
+
+grid.arrange(t.SO2.dist, t.SO2.dist.sqrt, ncol=2)
+
+summary(ww$total.sulfur.dioxide)
+```
+
+#### Free SO2 content
+```{r echo=FALSE, Univariate_Plots_free.sulfur.dioxide}
+# Explore distribution of free.sulfur.dioxide variable
+f.SO2.dist <- qplot(x = free.sulfur.dioxide, data = ww, binwidth =1)+
+  scale_x_continuous(limits = c(min(ww$free.sulfur.dioxide), max(ww$free.sulfur.dioxide)),
+                     breaks = seq(0, max(ww$free.sulfur.dioxide), 50))
+
+# Transform x to log10
+f.SO2.dist.log <- qplot(x = free.sulfur.dioxide, data = ww, binwidth =0.02)+
+  scale_x_log10()
+
+grid.arrange(f.SO2.dist, f.SO2.dist.log, ncol=2)
+
+summary(ww$free.sulfur.dioxide)
+
+summary(ww$free.sulfur.dioxide > 50)  # count of the wines with higher than 50 mg/L
+
+sum(ww$free.sulfur.dioxide > 50) / length(ww$free.sulfur.dioxide) * 100  # percentages of wines with less than 50 mg/L
+```
+Comment: (1) sulphates: the lowest and highest in sulphates content were 0.22 and 1.08 g/L, respectively. Most white wines were between 0.41 and 0.55 g/L in sulphates. (2) total SO2: the lowest and highest in total SO2 content were 9 and 440 mg/L, respectively. Most white wines were between 108 and 167 mg/L in total SO2. (3) free SO2: the lowest and highest in free SO2content were 2 and 289 mg/L, respectively. Most white wines were between 23 and 46 mg/L in free SO2. 
+Because the distributions of all three variables were skewed to the right, log transformation helped to get better distribution for sulphates and free SO2, and the values of total SO2 were square root transformed. 
+According to the data info notes, free SO2 prevents microbial growth and the oxidation of wine, but over 50 mg/L of free SO2 (about 18%), SO2 becomes evident in the nose and taste of wine. Thus, free SO2 is likely related to wine quality. In addition, sulfates are an additive that contributes to SO2 gas, and so all three variables indicating sulfur content are likely related to each other.
+
+
+
+## 1.1.2 Univariate Analysis
+
+### What is the structure of your dataset?
+There were 4,898 white wines in the dataset with 1 sensory data (quality score) and 11 physicochemical properties (alcohol, sugar, NaCl, tartaric acid, acetic acid, citric acid, K2SO4, total and free SO2 contents, pH, and density).
+All physicochemical properties were numeric variables, and the quality variable was integer.
+
+Other observations:
+The most common white wines were quality score of 6.
+Alcohol content ranged from 8 to 14.2% and the median alcohol was 10.4%.
+Sugar content ranged from 0.6 to 65.8 g/L and most white wines were around 2 and 10 g/L.
+Salt content was less than 0.1 g/L for most white wines (98%) with the median of 0.043 g/L.
+Acidity ranged from pH 2.72 to pH 3.82 with the median of pH 3.18.
+The medians of tartaric, acetic, and citric acid contents were 6.8, 0.26, and 0.32 g/L, respectively.
+The medians of K2SO4, total and free SO2 contents were 0.47 g/L, 134 mg/L, and 34 mg/L, respectively.
+Density ranged from 0.9871 to 1.0390 Kg/L with the median of 0.9937 Kg/L.
+
+### What is/are the main feature(s) of interest in your dataset?
+The main feature in the data set was quality score. I would like to determine which physicochemical properties (input variables) are best for predicting the quality of white wine (output variable). The measurements of physicochemical properties could be responsible for smell and taste of white wine. For examples, sugar for sweetness, NaCl for saltiness, acidity for sourness, acetic acid for vinegary taste, citric acid for citrus flavor, and free SO2 for pungent odor. I think that the balance among these flavors can contribute to the wine quality, thus some combination of physicochemical properties can be used to complement sensory tests or build a predictive model to sensory tests.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+The article (Cortez 2009) hinted that there is relationship between alcohol and residual sugar contents since alcohol production depends on grape sugar level and fermentation process. After reading some basics about wine tasting, too much or too little of alcohol, sweets, acids are not preferred and balancing among the ingredients is required for good quality. Focusing on high quality wines (>6) to compare how physicochemical properties of high quality wines are distributed differently from the others might help to understand any consistent trends for high quality. 
+
+### Did you create any new variables from existing variables in the dataset?
+I created 4 new variables including quality.order, quality.bucket, alcohol.bucket, and alcohol.body. (1) Variable quality.order is a variable changed from existing variable quality, which was numeric, to ordered factor. (2) Variable quality.bucket is a variable also changed from variable quality to categorical with 3 groups. (3) Variable alcohol.bucket is a variable changed from existing variable alcohol, by evenly cutting numbers into categories. (4) Variable alcohol.body is a variable also changed from alcohol, by following conventional body levels of wines. Reasoning: ordered or categorical factors are useful to color data as well as draw statistics on plots for further analysis. 
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+I log- or square root-transformed the right skewed distributions. The distributions of NaCl, sugar, tartaric and acetic acids, K2SO4, free SO2 were strongly skewed to the right, so log-transformation was used to reduce the strong right skewness. The transformed distribution for sugar appeared bimodal with the sugar peaking at around 1.5 or so and again at 8 g/L or so. Some wines had zero values of citric acid, so square root transformation was applied to reduce the right skewness for citric acid. The distribution of total SO2 was weakly skewed, so squared root transformation was used.
+
+
+
+## 1.2.1 Bivariate Plots Section
+
+### Multivariate Outliners
+```{r echo=FALSE, message=FALSE, outlier}
+# Create new dataframes including only numeric variables
+ww_subset <- ww[c(2:13)]
+
+# Create Chi-Square Plot to identify outliers
+# source: https://cran.r-project.org/web/packages/mvoutlier/mvoutlier.pdf
+chisq.plot(ww_subset, quan=1/2)
+
+ww[2782, ]
+```
+```{r echo=FALSE, message=FALSE, remove_outlier}
+# Remove observation of 2782
+ww <- ww[-c(2782), ]
+ww_subset <- ww_subset[-c(2782), ]
+
+dim(ww)
+dim(ww_subset)
+```
+Comment: outlier was X = 2782 with Sq. Mahalanobis Distance of 3800. Observation 2782 had extreme values in acetic acid, sugar, and density, and values of the other variables were far from the medians. I decided to delete this row.
+
+```{r echo=FALSE, subset}
+# Rename variables for simplicity on plot
+# source: http://www.cookbook-r.com/Manipulating_data/Renaming_columns_in_a_data_frame/
+ww_subset <- rename(ww_subset, 
+       c("fixed.acidity" = "tart", 
+         "volatile.acidity" = "acet", 
+         "citric.acid" = "citr",          
+         "residual.sugar" = "sugar",
+         "chlorides" = "NaCl",
+         "free.sulfur.dioxide" = "fSO2",
+         "total.sulfur.dioxide" = "tSO2",
+         "density" = "dens",
+         "sulphates" = "K2SO4",
+         "alcohol" = "alco",
+         "quality" = "qual"))
+
+# Create another dataframe including transformed data
+tart.log <- log10(ww_subset$tart)
+acet.log <- log10(ww_subset$acet)
+citr.sqrt <- sqrt(ww_subset$citr)
+suga.log <- log10(ww_subset$sugar)
+NaCl.log <- log10(ww_subset$NaCl)
+fSO2.log <- log10(ww_subset$fSO2)
+tSO2.sqrt <- sqrt(ww_subset$tSO2)
+dens <- ww_subset$dens
+pH <- ww_subset$pH
+SO4.log <- log10(ww_subset$K2SO4)
+alco <- ww_subset$alco
+qual <- ww_subset$qual
+
+ww_subset_trans <- data.frame(tart.log, acet.log, citr.sqrt, 
+                              suga.log, NaCl.log, fSO2.log, 
+                              tSO2.sqrt, dens, pH, SO4.log,
+                              alco, qual)
+
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, chisq}
+chisq.plot(ww_subset[ , -4], quan=1/2)
+chisq.plot(ww_subset_trans[ , -4], quan=1/2)
+```
+Comment: By transforming variables, it helped reducing overall outliers. 
+
+### Scatterplot Matrix
+```{r echo=FALSE, Scatterplot_Matrix}
+ggpairs(ww_subset_trans, 
+        lower = list(continuous = wrap(ggally_points, size = 0.2)),
+        upper = list(continuous = wrap("cor", size = 3, color = 'black'))) + 
+  theme_void()
+```
+Comment: the main feature of interest was quality. Alcohol, density, NaCl, acetic acid, and total SO2 seemed to have medium to weak correlation with quality score. Other than main features, density was interesting, which had strong correlations with alcohol, sugar, and total SO2 and weak correlations with NaCl, free SO2, and tartaric acid. Alcohol was correlated with NaCl, total SO2, sugar, and free SO2. pH was correlated with tartaric and citric acid and K2SO4, but not with acetic acid. Citric acid was weakly correlated with tartaric and acetic acids. Free and total SO2 was strongly correlated. Sugar was correlated with free and total SO2. NaCl and total SO2 weakly were correlated.
+
+
+### Boxplots by quality.bucket 
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_box_by_quality}
+
+box1 <- qplot(x= quality.bucket, y= alcohol, data = ww, geom = 'boxplot')+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box2 <- qplot(x= quality.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.98)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box3 <- qplot(x= quality.bucket, y= chlorides, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$chlorides), quantile(ww$chlorides, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box4 <- qplot(x= quality.bucket, y= pH, data = ww, geom = 'boxplot')+
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box5 <- qplot(x= quality.bucket, y= fixed.acidity, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$fixed.acidity), quantile(ww$fixed.acidity, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box6 <- qplot(x= quality.bucket, y= volatile.acidity, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$volatile.acidity), quantile(ww$volatile.acidity, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box7 <- qplot(x= quality.bucket, y= citric.acid, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$citric.acid), quantile(ww$citric.acid, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box8 <- qplot(x= quality.bucket, y= sulphates, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$sulphates), quantile(ww$sulphates, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box9 <- qplot(x= quality.bucket, y= total.sulfur.dioxide, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$total.sulfur.dioxide), quantile(ww$total.sulfur.dioxide, 0.98)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box10 <- qplot(x= quality.bucket, y= free.sulfur.dioxide, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$free.sulfur.dioxide), quantile(ww$free.sulfur.dioxide, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+box11 <- qplot(x= quality.bucket, y= density, data = ww, geom = 'boxplot')+
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.95)))+ 
+  geom_jitter(alpha = 1/10, color = 'royalblue')
+
+grid.arrange(box1, box2, box3, box11, ncol=4)
+grid.arrange(box4, box5, box6, box7, ncol=4)
+grid.arrange(box8, box9, box10, ncol=3)
+```
+Comment: Above, I created boxplots of all physicochemical properties grouped by quality buckets (<6, 6, >6). Alcohol, sugar, NaCl, density, pH, and total SO2 seemed to have consistent trends from low to high quality wines. For the other properties, in contrast, the high quality wines shared the similar distribution of the total. It was surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there was no correlation between sugar and quality (r = -0.065). This made me wonder if linear relationship was hidden due to bimodality. 
+
+### Density plots by quality.bucket
+```{r echo=FALSE, Bivariate_Plots_density_plots}
+
+denplot1 <- qplot(x= alcohol, data = ww, color = quality.bucket, geom = 'density')+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot2 <- qplot(x= residual.sugar, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot3 <- qplot(x= chlorides, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot4 <- qplot(x= density, data = ww, color = quality.bucket, geom = 'density')+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot5 <- qplot(x= pH, data = ww, color = quality.bucket, geom = 'density')+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot6 <- qplot(x= fixed.acidity, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot7 <- qplot(x= volatile.acidity, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot8 <- qplot(x= citric.acid, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_sqrt() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot9 <- qplot(x= sulphates, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot10 <- qplot(x= total.sulfur.dioxide, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_sqrt() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+denplot11 <- qplot(x= free.sulfur.dioxide, data = ww, color = quality.bucket, geom = 'density')+
+    scale_x_log10() +
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+grid.arrange(denplot1, denplot2, denplot3, denplot4, ncol=2)
+grid.arrange(denplot5, denplot6, denplot7, denplot8, ncol=2)
+grid.arrange(denplot9, denplot10, denplot11, ncol=2)             
+
+```
+Comment: Above, I created density plots of all physicochemical properties grouped by quality buckets (<6, 6, >6). Alcohol, density, NaCl, and total SO2 seemed to show different density distribution of high quality wines from that of low quality wines. For the other properties, in contrast, the high quality wines shared the similar distribution of the total. This somewhat agreed with the boxplots in the previous section.
+
+### Regression between alcohol vs. quality
+```{r echo=FALSE, Bivariate_Plots_functions}
+# Use function for plotting with ggplot for simplicity of code
+PlotScatter2Var <- function(dataset, x, y, opts = NULL) {
+  ggplot(dataset, aes_string(x = x, y = y)) +
+   geom_point(alpha = 1/20, position = position_jitter(h = 0.2), size = 2) +
+   geom_smooth(method = 'lm')
+}
+
+PlotScatter3Var <- function(dataset, x, y, z, opts = NULL) {
+  ggplot(dataset, aes_string(x = x, y = y, color = z)) +
+   geom_point(alpha = 1/10, position = position_jitter(h = 0), size = 2) +
+   geom_smooth(method = 'lm')+
+   scale_color_brewer(palette = "RdBu")+
+   theme_dark()
+}
+```
+
+
+```{r echo=FALSE, Bivariate_Plots_qual_vs_alco}
+PlotScatter2Var(ww, "alcohol", "quality")
+
+# Build the Linear Model
+qual.model1 <- lm(I(quality) ~ I(alcohol), data = ww)
+mtable(qual.model1)
+```
+Comment: since relationship between alcohol and quality seemed promissing from various plots, the linear model between quality and alcohol was built. R2 was 0.2, which indicating that alcohol explained about 20% of the variance in quality. 
+
+### Regression between density vs. quality
+```{r echo=FALSE, Bivariate_Plots_qual_vs_dens}
+PlotScatter2Var(ww, "density", "quality")
+
+qual.mode2 <- lm(I(quality) ~ I(density), data = ww)
+mtable(qual.mode2)
+```
+Comment: the linear model between quality and alcohol was built. R2 was 0.1, which indicating that alcohol explained about 10% of the variance in quality. 
+
+### Regression between sugar vs. quality
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_suga}
+# Create new varaible by cutting into 2 buckets
+ww$sugar.bucket <- cut(ww$residual.sugar,
+                             c(0.5, 2.5, 32))
+
+# Create boxplot and density plot separated by sugar.bucket
+sugar.box.log <- qplot(x = sugar.bucket, y = residual.sugar, data = ww, geom = 'boxplot')+
+  scale_y_log10()+
+  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
+  geom_jitter(alpha = 1/20)
+
+suga.qual.freq <- qplot(x = quality, data = ww, binwidth = 1, geom = 'density', color = sugar.bucket)
+  scale_color_brewer()+
+  theme_dark()
+
+grid.arrange(sugar.box.log, suga.qual.freq, ncol=2)
+
+by(ww$residual.sugar, ww$sugar.bucket, summary)
+by(ww$quality, ww$sugar.bucket, summary)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_qual_vs_suga}
+# Create scatterplots of quality vs. sugar, separated by sugar.bucket
+qual.suga1 <- PlotScatter2Var(ww, "quality", "residual.sugar")
+
+qual.suga1.1 <- qual.suga1 + scale_y_log10()
+
+qual.suga1.2 <- qual.suga1 + 
+  scale_y_continuous(trans = "log10", limits = c(min(ww$residual.sugar), 2.5))
+
+qual.suga1.3 <- qual.suga1 + 
+  scale_y_continuous(trans = "log10", limits = c(2.5, max(ww$residual.sugar)))
+
+qual.suga2 <- PlotScatter3Var(ww, "quality", "residual.sugar", "sugar.bucket") + 
+  scale_y_log10()
+
+grid.arrange(qual.suga1.1, qual.suga2, ncol=2)
+grid.arrange(qual.suga1.2, qual.suga1.3, ncol=2)
+
+# Correlation on Subsets
+with(subset(ww, sugar.bucket == "(0.5,2.5]"), cor.test(residual.sugar, quality))
+with(subset(ww, sugar.bucket == "(2.5,32]"), cor.test(residual.sugar, quality))
+```
+Comment: due to bimodality of sugar distribution, I investigate the statistical summary and regression with quality separately by two groups (<2.5, >2.5). The distribution of each group was close to normal. Low sugar group (<2.5) had a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Both groups had a quality median of 6. The correlation with quality was improved a little bit by grouping. Low sugar group was positively correlated with quality (r=0.172), while high sugar group was negatively correlated with quality (r=-0.156).
+
+### Rerationship between SO2 vs. quality
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_freeSO2}
+# Create new varaible by cutting into 4 buckets
+ww$freeSO2.bucket <- cut(ww$free.sulfur.dioxide,
+                             c(1, 5, 50, 120, 290))
+
+# density plot separated by sugar.bucket
+qplot(x = quality, data = ww, geom = 'density', color = freeSO2.bucket)+
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+  
+qplot(x = free.sulfur.dioxide, data = ww, geom = 'density', color = quality.order)+
+  scale_x_log10() +
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+
+# Calculate percentage of each bucket
+sum(ww$freeSO2.bucket == "(1,5]") / length(ww$freeSO2.bucket) * 100
+sum(ww$freeSO2.bucket == "(5,50]") / length(ww$freeSO2.bucket) * 100
+sum(ww$freeSO2.bucket == "(50,120]") / length(ww$freeSO2.bucket) * 100
+sum(ww$freeSO2.bucket == "(120,290]") / length(ww$freeSO2.bucket) * 100
+
+by(ww$free.sulfur.dioxide, ww$freeSO2.bucket, summary)
+by(ww$quality, ww$freeSO2.bucket, summary)
+```
+Comment: free SO2 over 50 mg/L becomes evident in the nose and taste of wine, but the measurement of free SO2 alone was not necessary to determine wine quality. Majority of wines (82%) had free SO2 below 50 mg/L. The density plot showed that the quality of wine with below and above 50 mg/L of free SO2 were distributed similarly. However, the quality of extreme case where free SO2 are lower than 5 mg/L or higher than 120 mg/L was shown to be low. So, if white wine had too little or too much free SO2, the quality unlikely would be higher than 6. This suggest that free SO2 is required at a certain level (20-50 mg/L) to compromise between preservation purpose (antioxidant) and good smell, but there is no linear relationship between free SO2 and quality.
+
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_totalSO2}
+#PlotScatter2Var(ww, "total.sulfur.dioxide", "free.sulfur.dioxide")+
+#  scale_x_sqrt() +
+#  scale_y_log10()
+
+#PlotScatter3Var(ww, "total.sulfur.dioxide", "free.sulfur.dioxide", "freeSO2.bucket") +
+#  scale_x_sqrt() +
+#  geom_point()+
+#  scale_y_log10()
+
+#PlotScatter3Var(ww, "total.sulfur.dioxide", "free.sulfur.dioxide", "quality.order") +
+#  geom_point()+
+#  scale_x_sqrt() +
+#  scale_y_log10()
+
+
+
+# Create new varaible by cutting into 2 buckets
+#ww$freeSO2.bucket <- cut(ww$free.sulfur.dioxide,
+#                             c(1, 50, 120, 290))
+
+# density plot separated by sugar.bucket
+qplot(x = total.sulfur.dioxide, data = ww, geom = 'density', color = quality.order)+
+  scale_x_sqrt() +
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+
+
+
+# Calculate percentage of each bucket
+#sum(ww$freeSO2.bucket == "(1,50]") / length(ww$freeSO2.bucket) * 100
+#sum(ww$freeSO2.bucket == "(50,120]") / length(ww$freeSO2.bucket) * 100
+#sum(ww$freeSO2.bucket == "(120,290]") / length(ww$freeSO2.bucket) * 100
+
+#by(ww$free.sulfur.dioxide, ww$freeSO2.bucket, summary)
+#by(ww$quality, ww$freeSO2.bucket, summary)
+```
+
+### Rerationship between acidity vs. quality
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_acetic.acid}
+
+# Create new varaible by cutting into 2 buckets
+ww$acetic.bucket <- cut(ww$volatile.acidity,
+                             c(0, 0.8, 1.1))
+
+# density plot separated by sugar.bucket
+qplot(x = quality, data = ww, geom = 'density', color = acetic.bucket)+
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+  
+qplot(x = volatile.acidity, data = ww, geom = 'density', color = quality.order)+
+  scale_x_log10() +
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+
+# Calculate percentage of each bucket
+sum(ww$acetic.bucket == "(0,0.8]") / length(ww$acetic.bucket) * 100
+sum(ww$acetic.bucket == "(0.8,1.1]") / length(ww$acetic.bucket) * 100
+
+by(ww$volatile.acidity, ww$acetic.bucket, summary)
+by(ww$quality, ww$acetic.bucket, summary)
+```
+
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots_citric.acid}
+
+# Create new varaible by cutting into 2 buckets
+#ww$citric.bucket <- cut(ww$volatile.acidity,
+#                             c(0, 0.8, 1.1))
+
+# density plot separated by sugar.bucket
+#qplot(x = quality, data = ww, geom = 'density', color = subset(ww, ww$citric.acid ==0.49))+
+#  scale_color_brewer(palette = "RdBu")+
+#  theme_dark()
+  
+qplot(x = citric.acid, data = ww, geom = 'density', color = quality.order)+
+  scale_x_sqrt() +
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
+
+# Calculate percentage of each bucket
+sum(ww$citric.acid == 0.49) / length(ww$acetic.bucket) * 100
+
+by(ww$citric.acid, ww$citric.acid == 0.49, summary)
+by(ww$quality, ww$citric.acid == 0.49, summary)
+```
+
+## 1.2.2 Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+The scatterplot matrix, boxplots and density plots grouped by quality.bucket, consistently showed relationship of quality with alcohol and density, and to a lesser extent with NaCl, acetic acid, and total SO2. The highest correlation r values with quality were alcohol and density, but were not that strong: 0.436 and -0.307, respectively. And none of single variable can explain the variance in quality score more than 20%. I wonder if combination of two or more variables can make better prediction model for quality. 
+It was surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there was no correlation between sugar and quality (r = -0.065). Due to bimodality, some relationship could be hidden. Actually, the data of each modal behaved differently with quality. In low sugar group (<2.5 g/L), sugar was positively correlated with quality (r=0.172), while in high sugar group (>2.5 g/L), sugar was negatively correlated with quality (r=-0.156). 
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+Strong correlations were detected among density, alcohol, total SO2, sugar, and NaCl. This indicated that these variables might be dependent on each other for some degree. The density of wine depends on content of alcohol, sugar, salts etc. Because alcohol is lighter than water (1kg/L), the more alcohol, the lower density can be achieved. And since solute such as sugar, NaCl, and SO2 contributes to adding density of solution, the more solute, the higher density can be achieved. As mentioned at the univariate analysis, during the fermentation process, sugar is taken up by yeast to produce alcohol. In general, the more alcohol content in wine, the less sugar remains. All of these correlations were observed either strongly or weakly.
+ 
+### What was the strongest relationship you found?
+The correlations between density and alcohol and between density and sugar were the strongest in white wine dataset with r value of -0.78 and 0.756, respectively. This information can be helpful for guiding wine choice based on taste preference such as sweat or dry and heavy- or light-bodied, but for predicting wine based on quality. 
+Of physicochemical properties, the strongest correlation between a single variable and quality was alcohol and quality. Wine with higher content of alcohol tended to be high in quality. Nonetheless, alcohol was explaining 20% of the variance in quality, thus alcohol cannot be an only parameter for quality prediction model.
+
+
+## 1.3.1 Multivariate Plots Section
+
+### PCA
+
+
+```{r echo=FALSE, Multivariate_Plots}
+# Standardise variables
+# source: http://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/multivariateanalysis.html
+ww_trans_stdise <- as.data.frame(scale(ww_subset_trans[ ,-12]))
+
+sapply(ww_trans_stdise, mean)
+sapply(ww_trans_stdise, sd)
+
+```
+Comment:  the means of the standardised variables were all very tiny numbers and so were essentially equal to 0, and the standard deviations of the standardised variables were all equal to 1.
+
+```{r}
+# Principal component analysis
+ww_trans.pca <- prcomp(ww_trans_stdise)
+
+summary(ww_trans.pca)
+
+ww_trans.pca$sdev
+sum((ww_trans.pca$sdev)^2)
+
+# Create a scree plot
+screeplot(ww_trans.pca, type = "lines")
+
+```
+
+```{r}
+ww_trans.pca$rotation[ , 1:4]
+sum((ww_trans.pca$rotation[ , 1])^2)
+```
+
+```{r}
+head(ww_trans.pca$x)
+head(ww_trans.pca$x[ , 1])  # call PC1
+```
+
+```{r}
+ww_trans.pca_x <- as.data.frame(ww_trans.pca$x)
+ww_trans.pca_x$quality.order <- ww$quality.order
+ww_trans.pca_x$quality.bucket <- ww$quality.bucket
+ww_trans.pca_x$alcohol.bucket <- ww$alcohol.bucket
+ww_trans.pca_x$sugar.bucket <- ww$sugar.bucket
+```
+
+
+```{r}
+# Use function for plotting with ggplot for simplicity of code
+PlotPCA <- function(dataset, x, y, z, opts = NULL) {
+  ggplot(dataset, aes_string(x = x, y = y, color = z)) +
+    geom_point()+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+}
+# Create a scatter plot PC1 vs. PC2
+PlotPCA(ww_trans.pca_x, "PC1", "PC2", "quality.order")
+PlotPCA(ww_trans.pca_x, "PC1", "PC2", "quality.bucket")
+PlotPCA(ww_trans.pca_x, "PC1", "PC2", "alcohol.bucket")
+PlotPCA(ww_trans.pca_x, "PC1", "PC2", "sugar.bucket")
+
+```
+
+
+```{r}
+
+ggplot(aes(x = PC1), data = ww_trans.pca_x) +
+    geom_density(aes(color = quality.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+ggplot(aes(x = PC1), data = ww_trans.pca_x) +
+    geom_density(aes(color = alcohol.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+ggplot(aes(x = PC1), data = ww_trans.pca_x) +
+    geom_density(aes(color = sugar.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+```
+
+```{r}
+names(ww_trans_stdise[c(4, 5, 7, 8, 11)])
+```
+
+
+```{r}
+# Principal component analysis
+ww_trans_mychoice.pca <- prcomp(ww_trans_stdise[c(4, 5, 7, 8, 11)])
+
+summary(ww_trans_mychoice.pca)
+
+ww_trans_mychoice.pca$sdev
+sum((ww_trans_mychoice.pca$sdev)^2)
+
+# Create a scree plot
+screeplot(ww_trans_mychoice.pca, type = "lines")
+
+ww_trans_mychoice.pca$rotation[ , 1:4]
+sum((ww_trans_mychoice.pca$rotation[ , 1])^2)
+
+ww_trans_mychoice.pca_x <- as.data.frame(ww_trans_mychoice.pca$x)
+ww_trans_mychoice.pca_x$quality.order <- ww$quality.order
+ww_trans_mychoice.pca_x$quality.bucket <- ww$quality.bucket
+ww_trans_mychoice.pca_x$alcohol.bucket <- ww$alcohol.bucket
+ww_trans_mychoice.pca_x$sugar.bucket <- ww$sugar.bucket
+
+
+```
+
+```{r}
+# Create a scatter plot PC1 vs. PC2
+PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "quality.order")
+PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "quality.bucket")
+PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "alcohol.bucket")
+PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "sugar.bucket")
+```
+
+```{r}
+ggplot(aes(x = PC1), data = ww_trans_mychoice.pca_x) +
+    geom_density(aes(color = quality.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+ggplot(aes(x = PC1), data = ww_trans_mychoice.pca_x) +
+    geom_density(aes(color = alcohol.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+```
+```{r}
+# Principal component analysis
+ww_trans_svmchoice.pca <- prcomp(ww_trans_stdise[c(3, 4, 7, 10, 11)])
+
+summary(ww_trans_svmchoice.pca)
+
+ww_trans_svmchoice.pca$sdev
+sum((ww_trans_svmchoice.pca$sdev)^2)
+
+# Create a scree plot
+screeplot(ww_trans_svmchoice.pca, type = "lines")
+
+ww_trans_svmchoice.pca$rotation[ , 1:4]
+sum((ww_trans_svmchoice.pca$rotation[ , 1])^2)
+
+ww_trans_svmchoice.pca_x <- as.data.frame(ww_trans_svmchoice.pca$x)
+ww_trans_svmchoice.pca_x$quality.order <- ww$quality.order
+ww_trans_svmchoice.pca_x$quality.bucket <- ww$quality.bucket
+ww_trans_svmchoice.pca_x$alcohol.bucket <- ww$alcohol.bucket
+ww_trans_svmchoice.pca_x$sugar.bucket <- ww$sugar.bucket
+
+
+```
+
+```{r}
+# Create a scatter plot PC1 vs. PC2
+PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "quality.order")
+PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "quality.bucket")
+PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "alcohol.bucket")
+PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "sugar.bucket")
+
+ggplot(aes(x = PC1), data = ww_trans_svmchoice.pca_x) +
+    geom_density(aes(color = quality.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+
+ggplot(aes(x = PC1), data = ww_trans_svmchoice.pca_x) +
+    geom_density(aes(color = alcohol.bucket))+
+    scale_color_brewer(palette = "RdBu")+
+    theme_dark()
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_qual_suga}
+PlotScatter2Var(ww, "quality", "density")
+PlotScatter2Var(ww, "alcohol", "quality")
+
+```
+
+
+
+
+
+```{r}
+alco.dens.scatter1 <- alco.dens.scatter1 + 
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.98)))
+alco.dens.scatter2 <- alco.dens.scatter2 + 
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.98)))
+
+grid.arrange(alco.dens.scatter1, alco.dens.scatter2, ncol=2)
+```
+
+```{r}
+suga.dens.scatter1 <- PlotScatter(ww, "residual.sugar", "density", "quality.order")
+
+suga.dens.scatter1 +
+  coord_cartesian(xlim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.98)),
+                  ylim = c(min(ww$density), quantile(ww$density, 0.99)))
+```
+
+
+
+
+
+```{r}
+NaCl.dens.scatter1 <- PlotScatter(ww, "chlorides", "density", "quality.order")
+NaCl.dens.scatter2 <- PlotScatter(ww, "chlorides", "density", "quality.bucket")
+
+NaCl.dens.scatter1.1 <- NaCl.dens.scatter1 +
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
+
+NaCl.dens.scatter2.1 <- NaCl.dens.scatter2 +
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
+
+grid.arrange(NaCl.dens.scatter1.1, NaCl.dens.scatter2.1, ncol=2)
+```
+
+```{r}
+NaCl.dens.scatter1.2 <- NaCl.dens.scatter1 +
+  scale_x_log10()+
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
+
+NaCl.dens.scatter2.2 <- NaCl.dens.scatter2 +
+  scale_x_log10()+
+  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
+
+grid.arrange(NaCl.dens.scatter1.2, NaCl.dens.scatter2.2, ncol=2)
+```
+ 
+
+```{r echo=FALSE }
+# Explore distribution of residual.sugar variable by quality.order
+by(ww$residual.sugar, ww$quality.order, summary)
+
+qplot(x = residual.sugar, data = ww, binwidth =0.1)+
+  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
+                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 2))+
+  facet_wrap(~quality.order, ncol = 2, scales="free_y")
+
+qplot(x = residual.sugar, data = ww, binwidth = 0.1, geom = 'freqpoly', color = quality.order)+
+  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
+                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 1))+
+  scale_color_brewer()+
+  theme_dark()
+
+qplot(x= quality.order, y= residual.sugar, data = ww, geom = 'boxplot')+
+  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
+  coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)))+
+  geom_jitter(alpha = 1/10)
+```
+
+```{r}
+P1 <- PlotScatter(ww, "quality", "residual.sugar", "alcohol.bucket")+
+  geom_jitter(alpha = 1/10)
+
+P1 + coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.99))) 
+
+P1 + ylim(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.5))
+
+P1 + ylim(quantile(ww$residual.sugar, 0.5), quantile(ww$residual.sugar, 0.99))
+```
+
+```{r}
+P2 <- PlotScatter(ww, "quality", "residual.sugar", "alcohol.body")+
+  geom_jitter(alpha = 1/10)
+
+P2 + coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.99))) 
+
+P2 + ylim(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.5))
+
+P2 + ylim(quantile(ww$residual.sugar, 0.5), quantile(ww$residual.sugar, 0.99))
+```
+
+```{r echo=FALSE }
+# Explore distribution of residual.sugar variable by alcohol.bucket
+qplot(x = residual.sugar, data = ww, binwidth = 0.1, geom = 'freqpoly', color = alcohol.bucket)+
+  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
+                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 1))+
+  scale_color_brewer()+
+  theme_dark()
+
+qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
+  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
+  coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)))+
+  geom_jitter(alpha = 1/10)
+```
+
+
+
+## 1.3.2 Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# 2. Final Plots and Summary
+
+### 2.1 Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### 2.2 Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### 2.3 Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# 3. Reflection
