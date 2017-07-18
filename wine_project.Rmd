@@ -37,7 +37,7 @@ library(mvoutlier)
 
 ```
 
-```{r echo=FALSE, Load_the_Data}
+```{r echo=FALSE, warning=TRUE}
 # Load the Data
 # Name the dataset 'White Wine quality', 'ww' for simplicity
 ww <- read.csv('wineQualityWhites.csv') 
@@ -79,7 +79,7 @@ str(ww$quality.order)
 ```
 
 #### What is distribution of quality?
-```{r echo=FALSE, Univariate_Plots_quality.order}
+```{r echo=FALSE, fig.height=3, fig.width=3, message=FALSE, warning=FALSE}
 # Create a bar plot, similar to histogram
 plot(ww$quality.order, xlab = 'quality.order') 
 
@@ -96,7 +96,7 @@ ProportionTable(ww$quality.order)
 Quality is normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5% respectively. 
 
 #### What are the distributions of 3-classes variables?
-```{r echo=FALSE, Univariate_Plots_quality.bucket}
+```{r echo=FALSE, fig.height=3, fig.width=3, message=FALSE, warning=FALSE}
 # Create new varaibles by cutting into 3 buckets
 ww$quality.con <- cut(ww$quality, c(2, 5, 6, 9)) # conservative cutoff
 ww$quality.lib <- cut(ww$quality, c(2, 4, 7, 9)) # liberal cutoff
@@ -129,7 +129,7 @@ I sorted some of variables into a related features to help organize variables as
 The weakest and the strongest white wines are 8.0% and 14.2% of alcohol, respectively. The distributions of < 9.5, 9.5-10.4, 10.5-11.4, and >11.4 are even, so I created a new variable called **alcohol.bucket**, which separated alcohol content into 4 classes. This might help with further analysis on its relationship with other variables.
 
 Additionally, as a conventionaly rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth. In addition to alcohol.bucket, I created a new variable called **alcohol.body**, which separated alcohol content into 3 classes. This might help to understand relationship between the preference of wine body and wine quality.
-```{r echo=FALSE, Univariate_Plots_alcohol}
+```{r echo=FALSE, fig.height=3, fig.width=5, message=FALSE, warning=FALSE}
 # Create new varaibles by cutting into buckets
 ww$alcohol.bucket <- cut(ww$alcohol,
                              c(7.9, 9.4, 10.4, 11.4, 14.20)) # evenly cutting into 4 classes
@@ -155,7 +155,7 @@ The distribution is little bit skewed to the left with mostly (68%) being light-
 
 ### Sugar content
 #### How the residual.sugar variable is distriubted? Any new variables are needed?
-```{r echo=FALSE, warning=FALSE, message=FALSE, Univariate_Plots_residual.sugar}
+```{r echo=FALSE, fig.height=3, fig.width=7, message=FALSE, warning=FALSE}
 # Explore distribution of residual.sugar variable
 sugar.dist <- qplot(x = residual.sugar, data = ww, binwidth =0.1)+
   scale_x_continuous(limits = c(min(ww$residual.sugar), max(ww$residual.sugar)),
@@ -196,7 +196,7 @@ Just quick overviewing the stats of residual sugar content from red wines, the M
 
 ### NaCl(salt) content
 #### How the nacl content variable is distriubted?
-```{r echo=FALSE, warning=FALSE, Univariate_Plots_chlorides}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of chlorides variable
 NaCl.dist <- qplot(x = chlorides, data = ww, binwidth =0.001)+
   scale_x_continuous(limits = c(min(ww$chlorides), max(ww$chlorides)),
@@ -216,7 +216,7 @@ The distribution of NaCl content is skewed with a right long tail. Thus, the log
 
 ### Density
 #### How the density variable is distriubted?
-```{r echo=FALSE, warning=FALSE, Univariate_Plots_density}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of density variable
 density.dist <- qplot(x = density, data = ww, binwidth =0.0001)+
   scale_x_continuous(limits = c(min(ww$density), max(ww$density)),
@@ -225,7 +225,7 @@ density.dist <- qplot(x = density, data = ww, binwidth =0.0001)+
 # Zoom in the x scale
 density.dist.zoom <- qplot(x = density, data = ww, binwidth =0.0001)+
   scale_x_continuous(limits = c(min(ww$density), quantile(ww$density, 0.999)),
-                     breaks = seq(0.980, quantile(ww$density, 0.999), 0.002))
+                     breaks = seq(0.980, quantile(ww$density, 0.999), 0.004))
 
 grid.arrange(density.dist, density.dist.zoom, ncol=2)
 summary(ww$density)
@@ -238,7 +238,7 @@ Density possibly contributes to taste of wine. Density depends on the alcohol an
  
 ### Acidity including pH, fixed.acidity, volatile.acidity, and citric.acid
 #### pH
-```{r echo=FALSE, warning=FALSE, Univariate_Plots_pH}
+```{r echo=FALSE, fig.height=3, fig.width=4, message=FALSE, warning=FALSE}
 # Explore distribution of pH variable
 qplot(x = pH, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(min(ww$pH), max(ww$pH)),
@@ -248,7 +248,7 @@ summary(ww$pH)
 ```
 
 #### tartaric acid content (nonvolatile or fixed acidity)
-```{r echo=FALSE, Univariate_Plots_fixed.acidity}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of fixed.acidity variable
 tartaric.dist <- qplot(x = fixed.acidity, data = ww, binwidth =0.1)+
   scale_x_continuous(limits = c(min(ww$fixed.acidity), max(ww$fixed.acidity)),
@@ -265,11 +265,11 @@ summary(ww$fixed.acidity)
 
 
 #### acetic acid content (volatile acidity)
-```{r echo=FALSE, Univariate_Plots_volatile.acidity }
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of volatile.acidity variable
 acetic.dist <- qplot(x = volatile.acidity, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(min(ww$volatile.acidity), max(ww$volatile.acidity)),
-                     breaks = seq(0.1, max(ww$volatile.acidity), 0.1))
+                     breaks = seq(0.1, max(ww$volatile.acidity), 0.2))
 
 # Transform x to log10
 acetic.dist.log <- qplot(x = volatile.acidity, data = ww, binwidth =0.02)+
@@ -282,7 +282,7 @@ summary(ww$volatile.acidity)
 ```
 
 #### citric acid content
-```{r echo=FALSE, warning=FALSE, Univariate_Plots_citric.acid}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of citric.acid variable
 citric.dist <- qplot(x = citric.acid, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(min(ww$citric.acid), max(ww$citric.acid)),
@@ -316,7 +316,7 @@ According to the [data info notes](https://s3.amazonaws.com/udacity-hosted-downl
 
 ### Antimicrobial and antioxidant contents, including sulphates, total.sulfur.dioxide, and free.sulfur.dioxide
 #### K2SO4 content (potassium sulphate)
-```{r echo=FALSE, Univariate_Plots_sulphates}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distsribution of sulphates variable
 K2SO4.dist <- qplot(x = sulphates, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(min(ww$sulphates), max(ww$sulphates)),
@@ -332,7 +332,7 @@ summary(ww$sulphates)
 ```
 
 #### Total SO2 content
-```{r echo=FALSE, Univariate_Plots_total.sulfur.dioxide}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of total.sulfur.dioxide variable
 t.SO2.dist <- qplot(x = total.sulfur.dioxide, data = ww, binwidth = 1)+
   scale_x_continuous(limits = c(min(ww$total.sulfur.dioxide), max(ww$total.sulfur.dioxide)),
@@ -348,7 +348,7 @@ summary(ww$total.sulfur.dioxide)
 ```
 
 #### Free SO2 content
-```{r echo=FALSE, Univariate_Plots_free.sulfur.dioxide}
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of free.sulfur.dioxide variable
 f.SO2.dist <- qplot(x = free.sulfur.dioxide, data = ww, binwidth =1)+
   scale_x_continuous(limits = c(min(ww$free.sulfur.dioxide), max(ww$free.sulfur.dioxide)),
@@ -423,7 +423,7 @@ I log- or square root-transformed the right skewed distributions. The distributi
 I will use multivariate approach to detect outliers instead of looking at all pairs of variables. This way I can detect universal outliers shown across all the variables. But there might be more detectable outliners by pair-wise approach.
 
 #### Is there any outlier?
-```{r echo=FALSE, message=FALSE, warning=FALSE, outlier}
+```{r echo=FALSE, fig.height=3, fig.width=4, message=FALSE, warning=FALSE}
 # Create new dataframes including only numeric variables
 ww_subset <- ww[c(2:13)]
 
@@ -482,7 +482,7 @@ ww_trans <- data.frame(alco, suga.log, NaCl.log, dens,
 ```
 
 #### What does chi-square plot look like after transformation? Is there any outlier?
-```{r echo=FALSE, warning=FALSE, message=FALSE, chisq}
+```{r echo=FALSE, fig.height=3, fig.width=4, message=FALSE, warning=FALSE}
 chisq.plot(ww_subset) 
 chisq.plot(ww_trans)
 chisq.plot(ww_trans[ , -4]) # without sugar variable
@@ -492,10 +492,10 @@ I notice a great difference in range of x-axis. By transforming variables, it he
 
 ### Scatterplot Matrix
 #### What pairs of variables have strong correlations?
-```{r echo=FALSE, Scatterplot_Matrix}
+```{r echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
 ggpairs(ww_trans, 
         lower = list(continuous = wrap(ggally_points, size = 0.2)),
-        upper = list(continuous = wrap("cor", size = 3, color = 'black'))) + 
+        upper = list(continuous = wrap("cor", size = 4, color = 'black'))) + 
   theme_void()
 ```
 The main feature of interest is quality. Alcohol, density, NaCl, acetic acid, and total SO2 seem to have medium to weak correlation with quality score. 
@@ -511,23 +511,22 @@ Free and total SO2 was strongly correlated. Sugar was correlated with free and t
 ### Categorical variable analysis: boxplot or density plot
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
 # Create categorical variables of quality in ww_trans dataframe
-ww_trans$quality.con <- ww$quality.con
-ww_trans$quality.lib <- ww$quality.lib
+#ww_trans$quality.con <- ww$quality.con
+#ww_trans$quality.lib <- ww$quality.lib
 ```
 ### Boxplots grouped by quality.con
 I will create boxplots of all physicochemical properties grouped by quality.cons (<6, 6, >6) to find general trends. 
 #### Is there any noticeable trend from low and middle to high quality, which was not detected from correllation analysis?
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_box_by_quality}
-# Create a function to generate a boxplot with y-axis as quality.con and x-axis as input column
+```{r echo=FALSE, fig.height=4, fig.width=3, message=FALSE, warning=FALSE}
+# Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
 plot2 <- function(col, quality, df, lab) {
   qplot(x= quality, y= col, data = df, geom = 'boxplot', ylab = lab)+ 
-  geom_jitter(alpha = 1/6, color = 'royalblue')+
-    coord_flip() # make horizontal boxplot
+  geom_jitter(alpha = 1/10, color = 'royalblue')
 }
 
 # Iterate every column to generate boxplot from ww_trans dateframe
 for (i in 1:11) {
-  print(plot2(ww_trans[ , i], ww_trans$quality.con, ww_trans, colnames(ww_trans)[i]))
+  print(plot2(ww_trans[ , i], ww$quality.con, ww_trans, colnames(ww_trans)[i]))
 }
 ```
 Alcohol, sugar, NaCl, density, pH, and total SO2 seem to have consistent trends from low to high quality wines. For the other properties, in contrast, the high quality wines share a similar distribution of the total. 
@@ -539,7 +538,7 @@ Although boxplots show the general trends, I am not sure the differences are sta
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots_ANOVA}
 # Create a function to generate ANOVA table
 aov_table <- function (col) {
-  col.aov <- aov(col ~ ww_trans$quality.con)
+  col.aov <- aov(col ~ ww$quality.con)
   summary(col.aov)
 }
 
@@ -552,10 +551,10 @@ for (i in 1:11) {
 ```
 Apperantly, the ANOVA test is not very helpful in this case because all variables significantly vary by quality.con.  
 
-### Density plots by quality.lib
+### Density plots grouped by quality.lib
 I will create density plots of all physicochemical properties grouped by quality.lib (<5, 5-7, >7) to find the trends of low-end and high-end cases. The advantage of density plot is the area under the curve is normalized for imbalanced class sizes.
 #### Is there any noticeable trend from low to high quality?
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_density_by_quality}
+```{r echo=FALSE, fig.height=3, fig.width=5, message=FALSE, warning=FALSE}
 # Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
 plot3 <- function(col, quality, df, lab) {
   qplot(x= col, data = df, color = quality, geom = 'density', xlab = lab)+
@@ -565,32 +564,51 @@ plot3 <- function(col, quality, df, lab) {
 
 # Iterate every columns to generate boxplots from ww_trans dateframe
 for (i in 1:11) {
-  print(plot3(ww_trans[ , i], ww_trans$quality.lib, ww_trans, colnames(ww_trans)[i]))
+  print(plot3(ww_trans[ , i], ww$quality.lib, ww_trans, colnames(ww_trans)[i]))
 }
 ```
 The density plots of alcohol, NaCl, density, and pH are reconfirming that the distribution of very high quality differs from that of very low quality for these properties. And acetic acid, SO4, and free SO2 seem to have distinct trends from low to high quality, which were not detected from boxplots.
 
-### Regression between sugar vs. quality
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_suga}
-# Create boxplot and density plot separated by sugar.bucket
-sugar.box.log <- qplot(x = sugar.bucket, y = residual.sugar, data = ww, geom = 'boxplot')+
-  scale_y_log10()+
-  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
-  geom_jitter(alpha = 1/20)
+### Density plots grouped by sugar.bucket
+Due to bimodality of residual.sugar distribution, I will take look at the distributions separately by two groups (<2.5, >2.5).
+
+#### What are the distributions of residual.sugar in the two separate groups? And what are the distribution of quality in the two groups?
+```{r echo=FALSE, fig.height=3, fig.width=7, message=FALSE, warning=FALSE}
+# Create density plots separated by sugar.bucket
+sugar.freq.log <- qplot(x= residual.sugar, data = ww, color = sugar.bucket, geom = 'density')+
+  scale_x_log10()+
+  scale_color_brewer(palette = "RdBu")+
+  theme_dark()
 
 suga.qual.freq <- qplot(x = quality, data = ww, binwidth = 1, geom = 'density', color = sugar.bucket)
   scale_color_brewer()+
   theme_dark()
 
-grid.arrange(sugar.box.log, suga.qual.freq, ncol=2)
+grid.arrange(sugar.freq.log, suga.qual.freq, ncol=2)
 
+print("residual.sugar")
 by(ww$residual.sugar, ww$sugar.bucket, summary)
+
+print("quality")
 by(ww$quality, ww$sugar.bucket, summary)
 ```
+The distribution of each group is close to normal with its own central. Low sugar group (<2.5) has a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Despite the bimodality of residual.sugar distribution, the quality in both groups is distributed very similarily, with the quality median of 6. 
 
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_qual_vs_suga}
+I investigate the statistical summary and regression with quality separately by two groups (<2.5, >2.5)
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create scatterplots of quality vs. sugar, separated by sugar.bucket
+PlotScatter2Var <- function(dataset, x, y, opts = NULL) {
+  ggplot(dataset, aes_string(x = x, y = y)) +
+   geom_point(alpha = 1/20, position = position_jitter(h = 0.2), size = 2) +
+   geom_smooth(method = 'lm')
+}
+PlotScatter3Var <- function(dataset, x, y, z, opts = NULL) {
+  ggplot(dataset, aes_string(x = x, y = y, color = z)) +
+   geom_point(alpha = 1/10, position = position_jitter(h = 0), size = 2) +
+   geom_smooth(method = 'lm')+
+   scale_color_brewer(palette = "RdBu")+
+   theme_dark()
+}
 qual.suga1 <- PlotScatter2Var(ww, "quality", "residual.sugar")
 
 qual.suga1.1 <- qual.suga1 + scale_y_log10()
@@ -605,13 +623,13 @@ qual.suga2 <- PlotScatter3Var(ww, "quality", "residual.sugar", "sugar.bucket") +
   scale_y_log10()
 
 grid.arrange(qual.suga1.1, qual.suga2, ncol=2)
-grid.arrange(qual.suga1.2, qual.suga1.3, ncol=2)
+#grid.arrange(qual.suga1.2, qual.suga1.3, ncol=2)
 
 # Correlation on Subsets
 with(subset(ww, sugar.bucket == "(0.5,2.5]"), cor.test(residual.sugar, quality))
 with(subset(ww, sugar.bucket == "(2.5,32]"), cor.test(residual.sugar, quality))
 ```
-Comment: due to bimodality of sugar distribution, I investigate the statistical summary and regression with quality separately by two groups (<2.5, >2.5). The distribution of each group was close to normal. Low sugar group (<2.5) had a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Both groups had a quality median of 6. The correlation with quality was improved a little bit by grouping. Low sugar group was positively correlated with quality (r=0.172), while high sugar group was negatively correlated with quality (r=-0.156).
+Comment: The correlation with quality was improved a little bit by grouping. Low sugar group was positively correlated with quality (r=0.172), while high sugar group was negatively correlated with quality (r=-0.156).
 
 ### Relationship between SO2 vs. quality
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots_freeSO2}
