@@ -42,6 +42,7 @@ library(mvoutlier)
 # Name the dataset 'White Wine quality', 'ww' for simplicity
 ww <- read.csv('wineQualityWhites.csv') 
 ```
+
 ------
 # 2. Analysis
 ## 2.1.2 Univariate Plots Section
@@ -60,7 +61,7 @@ All columns are numeric or continuous, except X and quality. X is wine sample ID
 ww$X <- factor(ww$X, ordered = F)  
 summary(ww)
 ```
-The data range of each variable varies, e.g., volatile.acidity ranges from 0.08 to 1.1 while total.sulfur.dioxide ranges from 9 to 440. This suggests that data transformation such as standardazation might require to compare two variables. 
+The data range of each variable varies, e.g., volatile.acidity ranges from 0.08 to 1.1 while total.sulfur.dioxide ranges from 9 to 440. This suggests that data transformation such as standardization might require to compare two variables. 
 
 #### Is there any missing values (na) or any zero values?
 ```{r echo=FALSE, Univariate_Plots_Missing}
@@ -138,7 +139,7 @@ ww$alcohol.body <- cut(ww$alcohol,
 
 # Create a function to generate a histogram with color encoding of categorical variable,
 # a table, and a proportion table
-plot1 <- function(col1, col2) {
+Plot1 <- function(col1, col2) {
   a <- qplot(x = col1, data = ww, binwidth = 0.1, color = I('black'), fill = col2)+
   scale_x_continuous(limits = c(min(col1), max(col1)),
                      breaks = seq(8, max(col1), 1))
@@ -148,8 +149,8 @@ plot1 <- function(col1, col2) {
 }
 
 # Explore distribution of alcohol variable
-plot1(ww$alcohol, ww$alcohol.bucket)
-plot1(ww$alcohol, ww$alcohol.body)
+Plot1(ww$alcohol, ww$alcohol.bucket)
+Plot1(ww$alcohol, ww$alcohol.body)
 ```
 The distribution is little bit skewed to the left with mostly (68%) being light-bodied (acohol <= 11). But I don't think that it requires transformation because the skewness seems minor. 
 
@@ -293,9 +294,15 @@ citric.dist.sqrt <- qplot(x = citric.acid, data = ww, binwidth =0.01)+
   scale_x_sqrt()
 
 grid.arrange(citric.dist, citric.dist.sqrt, ncol=2)
-summary(ww$citric.acid)
 
+print("Count and proportion of 0")
+summary(ww$citric.acid == 0)  # count of the wines with 0 g/L citric acid
+sum(ww$citric.acid == 0) / length(ww$acetic.bucket) * 100 # calculate percentage of the winew with 0 g/L
+
+print("Count and proportion of 0.49")
 summary(ww$citric.acid == 0.49)  # count of the wines with 0.49 g/L citric acid
+sum(ww$citric.acid == 0.49) / length(ww$acetic.bucket) * 100 # calculate percetage of the winew with 0.49 g/L
+
 # Zoom in the x scale
 qplot(x = citric.acid, data = ww, binwidth =0.01)+
   scale_x_continuous(limits = c(0.45, 0.55),
@@ -498,15 +505,23 @@ ggpairs(ww_trans,
         upper = list(continuous = wrap("cor", size = 4, color = 'black'))) + 
   theme_void()
 ```
-The main feature of interest is quality. Alcohol, density, NaCl, acetic acid, and total SO2 seem to have medium to weak correlation with quality score. 
+- The main feature of interest is quality. Alcohol, density, NaCl, acetic acid, and total SO2 seem to have medium to weak correlation with quality score. 
+- Other than main features, density is an interesting variable, which has strong correlations with alcohol, sugar, and total SO2 and weak correlations with NaCl, free SO2, and tartaric acid. 
+- Alcohol is correlated with NaCl, total SO2, sugar, and free SO2. 
+- pH is correlated with tartaric and citric acid and K2SO4, but not with acetic acid. 
+- Citric acid was weakly correlated with tartaric and acetic acids. 
+- Free and total SO2 was strongly correlated. 
+- Sugar was correlated with free and total SO2. 
+- NaCl and total SO2 weakly were correlated.
 
-Other than main features, density is an interesting variable, which has strong correlations with alcohol, sugar, and total SO2 and weak correlations with NaCl, free SO2, and tartaric acid. 
-
-Alcohol is correlated with NaCl, total SO2, sugar, and free SO2. 
-
-pH is correlated with tartaric and citric acid and K2SO4, but not with acetic acid. Citric acid was weakly correlated with tartaric and acetic acids. 
-
-Free and total SO2 was strongly correlated. Sugar was correlated with free and total SO2. NaCl and total SO2 weakly were correlated.
+#### What are the r-square values between quality vs. alcohol and quality vs. density?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Build the Linear Model
+qual.model1 <- lm(I(quality) ~ I(alcohol), data = ww)
+qual.mode2 <- lm(I(quality) ~ I(density), data = ww)
+mtable(qual.model1, qual.mode2, sdigits = 3)
+```
+Alcohol can explain 19% of the variance in quality score and density can 10%.
 
 ### Categorical variable analysis: boxplot or density plot
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
@@ -519,21 +534,21 @@ I will create boxplots of all physicochemical properties grouped by quality.cons
 #### Is there any noticeable trend from low and middle to high quality, which was not detected from correllation analysis?
 ```{r echo=FALSE, fig.height=4, fig.width=3, message=FALSE, warning=FALSE}
 # Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
-plot2 <- function(col, quality, df, lab) {
-  qplot(x= quality, y= col, data = df, geom = 'boxplot', ylab = lab)+ 
+Plot2 <- function(col, quality, lab) {
+  qplot(x= quality, y= col, geom = 'boxplot', ylab = lab)+ 
   geom_jitter(alpha = 1/10, color = 'royalblue')
 }
 
 # Iterate every column to generate boxplot from ww_trans dateframe
 for (i in 1:11) {
-  print(plot2(ww_trans[ , i], ww$quality.con, ww_trans, colnames(ww_trans)[i]))
+  print(Plot2(ww_trans[ , i], ww$quality.con, colnames(ww_trans)[i]))
 }
 ```
-Alcohol, sugar, NaCl, density, pH, and total SO2 seem to have consistent trends from low to high quality wines. For the other properties, in contrast, the high quality wines share a similar distribution of the total. 
+Alcohol, NaCl, density, and pH seem to have consistent trends from low to high quality wines. For the other properties, in contrast, the high quality wines share a similar distribution of the other level of quality. 
 
 It is surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there is no correlation between sugar and quality (r = -0.065). This makes me wonder if linear relationship was hidden due to bimodality.
 
-Although boxplots show the general trends, I am not sure the differences are statistically significant or not. Thus, I will perform one-way ANOVA test on each variable by quality.con.
+Although boxplots show the general trends, I am not sure whether the differences are statistically significant or not. Thus, I will perform one-way ANOVA test on each variable by quality.con.
 #### Are the differences statistically significant?
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots_ANOVA}
 # Create a function to generate ANOVA table
@@ -553,23 +568,24 @@ Apperantly, the ANOVA test is not very helpful in this case because all variable
 
 ### Density plots grouped by quality.lib
 I will create density plots of all physicochemical properties grouped by quality.lib (<5, 5-7, >7) to find the trends of low-end and high-end cases. The advantage of density plot is the area under the curve is normalized for imbalanced class sizes.
+
 #### Is there any noticeable trend from low to high quality?
 ```{r echo=FALSE, fig.height=3, fig.width=5, message=FALSE, warning=FALSE}
 # Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
-plot3 <- function(col, quality, df, lab) {
-  qplot(x= col, data = df, color = quality, geom = 'density', xlab = lab)+
+Plot3 <- function(col, quality, lab) {
+  qplot(x= col, color = quality, geom = 'density', xlab = lab)+
     scale_color_brewer(palette = "RdBu")+
     theme_dark()
 }
 
 # Iterate every columns to generate boxplots from ww_trans dateframe
 for (i in 1:11) {
-  print(plot3(ww_trans[ , i], ww$quality.lib, ww_trans, colnames(ww_trans)[i]))
+  print(Plot3(ww_trans[ , i], ww$quality.lib, colnames(ww_trans)[i]))
 }
 ```
-The density plots of alcohol, NaCl, density, and pH are reconfirming that the distribution of very high quality differs from that of very low quality for these properties. And acetic acid, SO4, and free SO2 seem to have distinct trends from low to high quality, which were not detected from boxplots.
+The density plots of alcohol, NaCl, density, and pH are reconfirming that for these properties the distributions of very high quality differs from that of very low quality. In addition, SO4 of high quality wine has slightly different distribution from medium and low quality wine. And acetic acid, total SO2 and free SO2 seem to have distinct trends of low quality wine compared to mediumn and high quality wine, which were not detected from boxplots.
 
-### Density plots grouped by sugar.bucket
+### Density plots and regression grouped by sugar.bucket
 Due to bimodality of residual.sugar distribution, I will take look at the distributions separately by two groups (<2.5, >2.5).
 
 #### What are the distributions of residual.sugar in the two separate groups? And what are the distribution of quality in the two groups?
@@ -592,135 +608,125 @@ by(ww$residual.sugar, ww$sugar.bucket, summary)
 print("quality")
 by(ww$quality, ww$sugar.bucket, summary)
 ```
-The distribution of each group is close to normal with its own central. Low sugar group (<2.5) has a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Despite the bimodality of residual.sugar distribution, the quality in both groups is distributed very similarily, with the quality median of 6. 
+The distribution of each sub-group by sugar is close to normal with its own central. Low sugar group (<2.5) has a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Despite the bimodality of residual.sugar distribution, the quality in both groups is distributed very similarily, with the quality median of 6. 
 
-I investigate the statistical summary and regression with quality separately by two groups (<2.5, >2.5)
+#### Do correlations between sugar and quality differ in the two groups?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Create scatterplots of quality vs. sugar, separated by sugar.bucket
-PlotScatter2Var <- function(dataset, x, y, opts = NULL) {
-  ggplot(dataset, aes_string(x = x, y = y)) +
-   geom_point(alpha = 1/20, position = position_jitter(h = 0.2), size = 2) +
-   geom_smooth(method = 'lm')
-}
-PlotScatter3Var <- function(dataset, x, y, z, opts = NULL) {
+# Create a function to draw scatterplots with linear fit line
+Plot4 <- function(dataset, x, y, z, opts = NULL) {
   ggplot(dataset, aes_string(x = x, y = y, color = z)) +
    geom_point(alpha = 1/10, position = position_jitter(h = 0), size = 2) +
    geom_smooth(method = 'lm')+
-   scale_color_brewer(palette = "RdBu")+
-   theme_dark()
+   scale_color_brewer(palette = "Set1")
 }
-qual.suga1 <- PlotScatter2Var(ww, "quality", "residual.sugar")
 
-qual.suga1.1 <- qual.suga1 + scale_y_log10()
-
-qual.suga1.2 <- qual.suga1 + 
-  scale_y_continuous(trans = "log10", limits = c(min(ww$residual.sugar), 2.5))
-
-qual.suga1.3 <- qual.suga1 + 
-  scale_y_continuous(trans = "log10", limits = c(2.5, max(ww$residual.sugar)))
-
-qual.suga2 <- PlotScatter3Var(ww, "quality", "residual.sugar", "sugar.bucket") + 
+qual.suga1 <- Plot4(ww, "quality", "residual.sugar", NULL)+ 
+  scale_y_log10()
+qual.suga2 <- Plot4(ww, "quality", "residual.sugar", "sugar.bucket") + 
   scale_y_log10()
 
-grid.arrange(qual.suga1.1, qual.suga2, ncol=2)
-#grid.arrange(qual.suga1.2, qual.suga1.3, ncol=2)
+grid.arrange(qual.suga1, qual.suga2, ncol=2)
 
-# Correlation on Subsets
+# Correlation on each group
+print("(0.5,2.5]")
 with(subset(ww, sugar.bucket == "(0.5,2.5]"), cor.test(residual.sugar, quality))
+print("(2.5,32]")
 with(subset(ww, sugar.bucket == "(2.5,32]"), cor.test(residual.sugar, quality))
 ```
-Comment: The correlation with quality was improved a little bit by grouping. Low sugar group was positively correlated with quality (r=0.172), while high sugar group was negatively correlated with quality (r=-0.156).
+The correlation with quality is improved a little bit by separating into two groups. Low sugar group (0.5,2.5] is positively correlated with quality (r=0.172), while high sugar group (2.5,32] is negatively correlated with quality (r=-0.156).
 
-### Relationship between SO2 vs. quality
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_freeSO2}
-# Create new varaible by cutting into 4 buckets
+### Relationship between freeSO2 vs. quality
+Density plot of freeSO2 showed an interesting trends although linear regression and boxplot did not show any promissing trends. Low quality wines are relatively more distributed to high-end as well as low-end freeSO2 while medium and high quality wines remain at the middle level of freeSO2. I wonder if too high or too low amounts of freeSO2 are related to low quality of wine.
+
+#### What are the distributions of quality in the sub-groups by freeSO2?
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
+# Create a new varaible by cutting into 4 buckets
 ww$freeSO2.bucket <- cut(ww$free.sulfur.dioxide,
                              c(1, 5, 50, 120, 290))
 
-# density plot separated by sugar.bucket
-qplot(x = quality, data = ww, geom = 'density', color = freeSO2.bucket)+
+# Create a function to generate a output set of proportion table, density plots, and summary table
+Plot5 <- function(col, bucket) {
+  a <- ProportionTable(bucket)
+  
+  b <- qplot(x = quality, data = ww, geom = 'density', color = bucket)+
   scale_color_brewer(palette = "RdBu")+
   theme_dark()
   
-qplot(x = free.sulfur.dioxide, data = ww, geom = 'density', color = quality.order)+
-  scale_x_log10() +
-  scale_color_brewer(palette = "RdBu")+
-  theme_dark()
+  c <- Plot3(col, ww$quality.order, NULL)
+  
+  d <- "quality"
+  e <- by(ww$quality, bucket, summary)
+  
+  return(list(a, b, c, d, e))
+}
 
-# Calculate percentage of each bucket
-sum(ww$freeSO2.bucket == "(1,5]") / length(ww$freeSO2.bucket) * 100
-sum(ww$freeSO2.bucket == "(5,50]") / length(ww$freeSO2.bucket) * 100
-sum(ww$freeSO2.bucket == "(50,120]") / length(ww$freeSO2.bucket) * 100
-sum(ww$freeSO2.bucket == "(120,290]") / length(ww$freeSO2.bucket) * 100
-
-by(ww$free.sulfur.dioxide, ww$freeSO2.bucket, summary)
-by(ww$quality, ww$freeSO2.bucket, summary)
+Plot5(ww$free.sulfur.dioxide, ww$freeSO2.bucket)
 ```
-Comment: free SO2 over 50 mg/L becomes evident in the nose and taste of wine, but the measurement of free SO2 alone was not necessary to determine wine quality. Majority of wines (82%) had free SO2 below 50 mg/L. The density plot showed that the quality of wine with below and above 50 mg/L of free SO2 were distributed similarly. However, the quality of extreme case where free SO2 are lower than 5 mg/L or higher than 120 mg/L was shown to be low. So, if white wine had too little or too much free SO2, the quality unlikely would be higher than 6. This suggest that free SO2 is required at a certain level (20-50 mg/L) to compromise between preservation purpose (antioxidant) and good smell, but there is no linear relationship between free SO2 and quality.
+According to [data info notes](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt), free SO2 over 50 mg/L becomes evident in the nose and taste of wine, but the measurement of free SO2 alone is not necessary to determine wine quality. 
+
+Majority of wines (82%) have free SO2 below 50 mg/L. The density plot shows that the quality of wine with below and above 50 mg/L of free SO2 are distributed similarly. However, the quality of extreme case (1% of the wine samples) where free SO2 are lower than 5 mg/L (1% of the sample size) or higher than 120 mg/L (0.1% of the sample size) is shown to be low. So, if white wine has too little or too much free SO2, the quality unlikely would be higher than 6. This suggest that free SO2 is required at a certain level (20-50 mg/L) to compromise between preservation purpose (antioxidant) and good smell, but there is no linear relationship between free SO2 and quality.
+
+### Relationship between totalSO2 vs. quality
+Total SO2 has a similar trend but a lesser extent like freeSO2 has.
+#### What are the distributions of quality in the sub-groups by totalSO2?
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
+# Create a new varaible by cutting into 4 buckets
+ww$totalSO2.bucket <- cut(ww$total.sulfur.dioxide,
+                             c(8, 30, 50, 250, 440))
+
+Plot5(ww$total.sulfur.dioxide, ww$totalSO2.bucket)
+```
+Similarily, the quality of extreme case (0.9% of the wine samples) where total SO2 are lower than 30 mg/L or higher than 250 mg/L is shown to be low. So, if white wine has too little or too much total SO2, the quality unlikely would be higher than 6. 
 
 
-### Rerationship between acidity vs. quality
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_acetic.acid}
-
-# Create new varaible by cutting into 2 buckets
+### Rerationship between acetic acid vs. quality
+The distribution of acetic acid by quality also suggests the possibility of that high-end values are an indicator of low quality wine.  
+#### What are the distributions of quality in the sub-groups by acetic acid?
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
+# Create new varaible by cutting into 3 buckets
 ww$acetic.bucket <- cut(ww$volatile.acidity,
                              c(0, 0.8, 1.1))
 
-# density plot separated by sugar.bucket
-qplot(x = quality, data = ww, geom = 'density', color = acetic.bucket)+
-  scale_color_brewer(palette = "RdBu")+
-  theme_dark()
-  
-qplot(x = volatile.acidity, data = ww, geom = 'density', color = quality.order)+
-  scale_x_log10() +
-  scale_color_brewer(palette = "RdBu")+
-  theme_dark()
-
-# Calculate percentage of each bucket
-sum(ww$acetic.bucket == "(0,0.8]") / length(ww$acetic.bucket) * 100
-sum(ww$acetic.bucket == "(0.8,1.1]") / length(ww$acetic.bucket) * 100
-
-by(ww$volatile.acidity, ww$acetic.bucket, summary)
-by(ww$quality, ww$acetic.bucket, summary)
+Plot5(ww$volatile.acidity, ww$acetic.bucket)
 ```
+It is very rare (0.1% of the sample size) that the wine would have acetic acid exceeding 0.8 g/L but if white wine has too much acetic acid, the quality unlikely would be higher than 5. 
 
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots_citric.acid}
+### Rerationship between citric acid vs. quality
+Although the median of citric acid is 0.32, there is unusual high count (4% of sample size) at 0.49 g/L and there is zero value for about 0.4% of sample. 
+#### What are the distributions of quality when citric acid is at 0.49 or 0?
+```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
+# Create a new variable by converting numerical to logical data type
+ww$citr0.49 <- ww$citric.acid == 0.49 # True being citric.acid == 0.49 and False being != 0.49
+ww$citr0 <- ww$citric.acid == 0.0 # True being citric.acid == 0 and False being != 0
 
-# Create new varaible by cutting into 2 buckets
-#ww$citric.bucket <- cut(ww$volatile.acidity,
-#                             c(0, 0.8, 1.1))
-
-# density plot separated by sugar.bucket
-#qplot(x = quality, data = ww, geom = 'density', color = subset(ww, ww$citric.acid ==0.49))+
-#  scale_color_brewer(palette = "RdBu")+
-#  theme_dark()
-  
-qplot(x = citric.acid, data = ww, geom = 'density', color = quality.con)+
-  scale_x_sqrt() +
-  scale_color_brewer(palette = "RdBu")+
-  theme_dark()
-
-# Calculate percentage of each bucket
-sum(ww$citric.acid == 0.49) / length(ww$acetic.bucket) * 100
-
-by(ww$citric.acid, ww$citric.acid == 0.49, summary)
+# Create density plot and summary table
+qplot(x = quality, data = ww, geom = 'density', color = citr0.49)
+print("citr0.49")
 by(ww$quality, ww$citric.acid == 0.49, summary)
+
+print("citr0")
+qplot(x = quality, data = ww, geom = 'density', color = citr0)
+by(ww$quality, ww$citric.acid == 0.0, summary)
 ```
+The quality distribution of the group with citric acid of 0.49 seems similar to the distribution by remaining samples, while the wines with zero citric acid are relatively lower in quality and they unlikely would have quality higher than 6.  
+
 
 ## 2.2.2 Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
-The scatterplot matrix, boxplots and density plots grouped by quality.con and qality.lib, consistently showed relationship of quality with alcohol and density, and to a lesser extent with NaCl, acetic acid, and total SO2. The highest correlation r values with quality were alcohol and density, but were not that strong: 0.436 and -0.307, respectively. And none of single variable alone can explain the variance in quality score more than 20%. I wonder if the combination of two or more variables can make better prediction model for quality. 
+The scatterplot matrix, boxplots and density plots grouped by quality.con and qality.lib, consistently showed relationship of quality with alcohol, density and NaCl, and to a lesser extent with pH, acetic acid, and total SO2. The highest correlation r values with quality were alcohol and density, but were not that strong: 0.436 and -0.307, respectively. And none of single variable alone can explain the variance in quality score more than 19%. I wonder if the combination of two or more variables can make better prediction model for quality. 
 
 It was surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there was no correlation between sugar and quality (r = -0.065). Due to bimodality, some relationship could be hidden. Actually, the data of each modal behaved differently with quality. In low sugar group (<2.5 g/L), sugar was positively correlated with quality (r=0.172), while in high sugar group (>2.5 g/L), sugar was negatively correlated with quality (r=-0.156). 
+
+freeSO2, totalSO2, and acetic acid showed that the extremely high or/and low values or even zero values of these variables were associated with low quality wine, though the extreme cases were very rare like about 0.1 to 1 %. 
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
 Strong correlations were detected among density, alcohol, total SO2, sugar, and NaCl. This indicated that these variables might be dependent on each other for some degree. The density of wine depends on content of alcohol, sugar, salts etc. Because alcohol is lighter than water (1kg/L), the more alcohol, the lower density can be achieved. And since solute such as sugar, NaCl, and SO2 contributes to adding density of solution, the more solute, the higher density can be achieved. As mentioned at the univariate analysis, during the fermentation process, sugar is taken up by yeast to produce alcohol. In general, the more alcohol content in wine, the less sugar remains. All of these correlations were observed either strongly or weakly.
  
 ### What was the strongest relationship you found?
-The correlations between density and alcohol and between density and sugar were the strongest in white wine dataset with r value of -0.78 and 0.756, respectively. This information can be helpful for guiding wine choice based on taste preference such as sweat or dry and heavy- or light-bodied, but for predicting wine based on quality. 
+The correlations between density and alcohol and between density and sugar were the strongest in white wine dataset with r value of -0.78 and 0.756, respectively. This information can be helpful for guiding wine choice based on taste preference such as sweat or dry and heavy- or light-bodied, yet weakly predicting wine based on quality. 
 
-Of physicochemical properties, the strongest correlation between a single variable and quality was alcohol and quality. Wine with higher content of alcohol tended to be high in quality. Nonetheless, alcohol was explaining 20% of the variance in quality, thus alcohol cannot be an only parameter for quality prediction model.
+Among physicochemical properties, a single variable that had the strongest correlation with quality was alcohol. Wine with higher content of alcohol tended to be high in quality. Nonetheless, alcohol was explaining only 19% of the variance in quality, thus alcohol cannot be an only parameter for quality prediction model.
 
 
 ## 2.3.1 Multivariate Plots Section
@@ -729,15 +735,14 @@ Of physicochemical properties, the strongest correlation between a single variab
 
 
 ```{r echo=FALSE, Multivariate_Plots}
-# Standardise variables
-# source: http://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/multivariateanalysis.html
+# Standardise variables using scale() buit-in function
 ww_trans_stdise <- as.data.frame(scale(ww_subset_trans[ ,-12]))
 
 sapply(ww_trans_stdise, mean)
 sapply(ww_trans_stdise, sd)
 
 ```
-Comment:  the means of the standardised variables were all very tiny numbers and so were essentially equal to 0, and the standard deviations of the standardised variables were all equal to 1.
+The means of the standardised variables were all very tiny numbers and so were essentially equal to 0, and the standard deviations of the standardised variables were all equal to 1.
 
 ```{r}
 # Principal component analysis
@@ -1059,3 +1064,5 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 - [returning multiple objects in function](https://stackoverflow.com/questions/8936099/returning-multiple-objects-in-an-r-function)
 - [mvoutlier package: Multivariate Outlier Detection Based on Robust Methods](https://cran.r-project.org/web/packages/mvoutlier/mvoutlier.pdf)
 - [renaming columns](http://www.cookbook-r.com/Manipulating_data/Renaming_columns_in_a_data_frame/)
+- [three digits after decimal point printed in mtable](https://s3.amazonaws.com/content.udacity-data.com/courses/ud651/diamondsExample_2016-05.html)
+- [Standardise variables](http://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/multivariateanalysis.html)
