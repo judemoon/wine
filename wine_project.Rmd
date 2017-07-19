@@ -34,7 +34,10 @@ library(devtools)
 library(knitr)
 library(plyr)
 library(mvoutlier)
-
+library(qgraph)
+library(psych)
+library(factoextra)
+library(rgl)
 ```
 
 ```{r echo=FALSE, warning=TRUE}
@@ -514,6 +517,14 @@ ggpairs(ww_trans,
 - Sugar was correlated with free and total SO2. 
 - NaCl and total SO2 weakly were correlated.
 
+### Correlation Network Matrix
+```{r echo=FALSE, fig.height=7, fig.width=6, message=FALSE, warning=FALSE, r echo=FALSE}
+qgraph(cor(ww_trans))
+qgraph(cor(ww_trans), minimum=0.2, edge.labels=TRUE, edge.label.cex=1.5)
+```
+
+
+
 #### What are the r-square values between quality vs. alcohol and quality vs. density?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Build the Linear Model
@@ -731,293 +742,102 @@ Among physicochemical properties, a single variable that had the strongest corre
 
 ## 2.3.1 Multivariate Plots Section
 
-### PCA
+### PCA (Principal component analysis)
+One way to deal with multivariate dataset is to reduce dementionality by using PCA. For the first attempt, I will use all physicochemical properties from ww_trans dataframe. PCA might be very sensitive to different units and differences in variability among the variables. So, I will run PCA with scale which standardizing the variables to have 0 mean and 1 std.
 
 
-```{r echo=FALSE, Multivariate_Plots}
-# Standardise variables using scale() buit-in function
-ww_trans_stdise <- as.data.frame(scale(ww_subset_trans[ ,-12]))
-
-sapply(ww_trans_stdise, mean)
-sapply(ww_trans_stdise, sd)
-
-```
-The means of the standardised variables were all very tiny numbers and so were essentially equal to 0, and the standard deviations of the standardised variables were all equal to 1.
-
-```{r}
-# Principal component analysis
-ww_trans.pca <- prcomp(ww_trans_stdise)
-
+#### What are the stdev and variance of each component, and variance?
+```{r echo=FALSE, fig.height=4, fig.width=5, message=FALSE, warning=FALSE}
+# Create a PCA data matrix
+ww_trans.pca <- prcomp(ww_trans, scale=TRUE)
 summary(ww_trans.pca)
-
-ww_trans.pca$sdev
-sum((ww_trans.pca$sdev)^2)
 
 # Create a scree plot
 screeplot(ww_trans.pca, type = "lines")
+```
+[The Kaiser criterion](http://www.uta.edu/faculty/sawasthi/Statistics/stfacan.html) suggested that we can retain only factors with eigenvalues greater than 1. That means I can keep PC1 through PC4. But the obvious change in slope occurs between 2 and 3, which is the elbow of the scree plot. I can focus on PC1 and PC2.
 
+#### What are the correlations of variables with PC1 and PC2?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Call the matrix of variable loadings
+ww_trans.pca$rotation[ , 1:2] # PC1 and PC2 columns
 ```
 
-```{r}
-ww_trans.pca$rotation[ , 1:4]
-sum((ww_trans.pca$rotation[ , 1])^2)
+#### Visualize variable loadings
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Call the matrix of variable loadings
+qgraph.pca(ww_trans[,-12], factors=2)
 ```
+The PC1 is positively correlated with alcohol but negatively correlated with density, totalSO2, sugar, NaCl, and freeSO2. The PC2 is positively correlated with tartaric acid and citric acid but negatively correlated with pH.
 
-```{r}
-head(ww_trans.pca$x)
-head(ww_trans.pca$x[ , 1])  # call PC1
-```
-
-```{r}
-ww_trans.pca_x <- as.data.frame(ww_trans.pca$x)
-ww_trans.pca_x$quality.order <- ww$quality.order
-ww_trans.pca_x$quality.bucket <- ww$quality.bucket
-ww_trans.pca_x$alcohol.bucket <- ww$alcohol.bucket
-ww_trans.pca_x$sugar.bucket <- ww$sugar.bucket
-```
-
-
-```{r}
-# Use function for plotting with ggplot for simplicity of code
-PlotPCA <- function(dataset, x, y, z, opts = NULL) {
-  ggplot(dataset, aes_string(x = x, y = y, color = z)) +
-    geom_point()+
-    scale_color_brewer(palette = "RdBu")+
+#### Visualize PCA
+```{r, echo=FALSE, fig.height=6, fig.width=7}
+# Create a biplot of individuals as points and variables as arrows
+fviz_pca_biplot(ww_trans.pca, repel=TRUE, # repel to avoid overplotting text labels
+                label="var", col.var="blue", # show labels in blue and only for variables
+                habillage=ww$quality.con, palette="RdBu", # color points by grouping
+                title="PCA biplot grouped by quality")+ # change title
     theme_dark()
-}
-# Create a scatter plot PC1 vs. PC2
-PlotPCA(ww_trans.pca_x, "PC1", "PC2", "quality.order")
-PlotPCA(ww_trans.pca_x, "PC1", "PC2", "quality.bucket")
-PlotPCA(ww_trans.pca_x, "PC1", "PC2", "alcohol.bucket")
-PlotPCA(ww_trans.pca_x, "PC1", "PC2", "sugar.bucket")
-
 ```
+As I expect, there is no distinct grouping by quality.con. The classes of quality are highly overlapping. However, there is a general trend of low to high quality from left top to right bottom, where most low quality wines are on the left side (Dim1<0) while most high quality wines are on the right side (Dim1>0). Thus, the quality seems positively related to Dim1 or PC1 which is highly influence by alcohol, density, sugar, NaCl, and total SO2.
 
-
-```{r}
-
-ggplot(aes(x = PC1), data = ww_trans.pca_x) +
-    geom_density(aes(color = quality.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-
-ggplot(aes(x = PC1), data = ww_trans.pca_x) +
-    geom_density(aes(color = alcohol.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-
-ggplot(aes(x = PC1), data = ww_trans.pca_x) +
-    geom_density(aes(color = sugar.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-
+#### What is the correlation between PC1 and quality?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Correlation test 
+cor.test(ww_trans.pca$x[ , 1], ww$quality) # using x object to access the coordinates of the individuals (PC1 scores)
 ```
+The correlation r value between PC1 and quality is 0.398, which is not better than correlation between quality and alcohol alone (0.436). So, using all variables into PCA does not improve in explaining quality.
 
-```{r}
-names(ww_trans_stdise[c(4, 5, 7, 8, 11)])
+#### How about 3D-plot using PC1, PC2, and PC3?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Draw a 3D plot
+plot3d(ww_trans.pca$x[ , 1:3], col=as.integer(ww$quality.con)) # grouped by quality.con
+#rgl.postscript("3d_pca.pdf","pdf")
 ```
+![Alt text](/3d_pca.JPG)
+The 3D-plot of PCA shows better separation of the classes.
 
+#### What about selecting only variables that are often shown to be related each others? Would this improve in explaining quality?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qgraph.pca(ww_trans[, c(1,2,3,4,10,12)], factors=2, rotation="varimax")
+```
+```{r echo=FALSE, fig.height=3, fig.width=4, message=FALSE, warning=FALSE}
+# Create a subset of dataframe
+ww_trans.subset<- ww_trans[, c(1,2,3,4,10)]
 
-```{r}
-# Principal component analysis
-ww_trans_mychoice.pca <- prcomp(ww_trans_stdise[c(4, 5, 7, 8, 11)])
-
-summary(ww_trans_mychoice.pca)
-
-ww_trans_mychoice.pca$sdev
-sum((ww_trans_mychoice.pca$sdev)^2)
+# Create a PCA data matrix
+ww_trans.sub.pca <- prcomp(ww_trans.subset, scale=TRUE)
+summary(ww_trans.sub.pca)
 
 # Create a scree plot
-screeplot(ww_trans_mychoice.pca, type = "lines")
-
-ww_trans_mychoice.pca$rotation[ , 1:4]
-sum((ww_trans_mychoice.pca$rotation[ , 1])^2)
-
-ww_trans_mychoice.pca_x <- as.data.frame(ww_trans_mychoice.pca$x)
-ww_trans_mychoice.pca_x$quality.order <- ww$quality.order
-ww_trans_mychoice.pca_x$quality.bucket <- ww$quality.bucket
-ww_trans_mychoice.pca_x$alcohol.bucket <- ww$alcohol.bucket
-ww_trans_mychoice.pca_x$sugar.bucket <- ww$sugar.bucket
-
-
+screeplot(ww_trans.sub.pca, type = "lines")
 ```
-
-```{r}
-# Create a scatter plot PC1 vs. PC2
-PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "quality.order")
-PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "quality.bucket")
-PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "alcohol.bucket")
-PlotPCA(ww_trans_mychoice.pca_x, "PC1", "PC2", "sugar.bucket")
-```
-
-```{r}
-ggplot(aes(x = PC1), data = ww_trans_mychoice.pca_x) +
-    geom_density(aes(color = quality.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-
-ggplot(aes(x = PC1), data = ww_trans_mychoice.pca_x) +
-    geom_density(aes(color = alcohol.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-```
-```{r}
-# Principal component analysis
-ww_trans_svmchoice.pca <- prcomp(ww_trans_stdise[c(3, 4, 7, 10, 11)])
-
-summary(ww_trans_svmchoice.pca)
-
-ww_trans_svmchoice.pca$sdev
-sum((ww_trans_svmchoice.pca$sdev)^2)
-
-# Create a scree plot
-screeplot(ww_trans_svmchoice.pca, type = "lines")
-
-ww_trans_svmchoice.pca$rotation[ , 1:4]
-sum((ww_trans_svmchoice.pca$rotation[ , 1])^2)
-
-ww_trans_svmchoice.pca_x <- as.data.frame(ww_trans_svmchoice.pca$x)
-ww_trans_svmchoice.pca_x$quality.order <- ww$quality.order
-ww_trans_svmchoice.pca_x$quality.bucket <- ww$quality.bucket
-ww_trans_svmchoice.pca_x$alcohol.bucket <- ww$alcohol.bucket
-ww_trans_svmchoice.pca_x$sugar.bucket <- ww$sugar.bucket
-
-
-```
-
-```{r}
-# Create a scatter plot PC1 vs. PC2
-PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "quality.order")
-PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "quality.bucket")
-PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "alcohol.bucket")
-PlotPCA(ww_trans_svmchoice.pca_x, "PC1", "PC2", "sugar.bucket")
-
-ggplot(aes(x = PC1), data = ww_trans_svmchoice.pca_x) +
-    geom_density(aes(color = quality.bucket))+
-    scale_color_brewer(palette = "RdBu")+
-    theme_dark()
-
-ggplot(aes(x = PC1), data = ww_trans_svmchoice.pca_x) +
-    geom_density(aes(color = alcohol.bucket))+
-    scale_color_brewer(palette = "RdBu")+
+```{r echo=FALSE, fig.height=6, fig.width=7, message=FALSE, warning=FALSE}
+# Create a biplot of individuals as points and variables as arrows
+fviz_pca_biplot((ww_trans.sub.pca), repel=TRUE, # repel to avoid overplotting text labels
+                label="var", col.var="blue", # show labels in blue and only for variables
+                habillage=ww$quality.con, palette="RdBu", # color points by grouping
+                title="PCA biplot grouped by quality-selected variables")+ # change title
     theme_dark()
 ```
 
-
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots_qual_suga}
-PlotScatter2Var(ww, "quality", "density")
-PlotScatter2Var(ww, "alcohol", "quality")
-
+#### What is the correlation between PC1 and quality?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Correlation test 
+cor.test(ww_trans.sub.pca$x[ , 1], ww$quality) # using x object to access the coordinates of the individuals (PC1 scores)
 ```
+Well, it dosen't help much. The correlation r value is 0.330 but the classes become spread out compared to all variables PCA.
 
-
-
-
-
-```{r}
-alco.dens.scatter1 <- alco.dens.scatter1 + 
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.98)))
-alco.dens.scatter2 <- alco.dens.scatter2 + 
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.98)))
-
-grid.arrange(alco.dens.scatter1, alco.dens.scatter2, ncol=2)
+#### How about 3D-plot using PC1, PC2, and PC3?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Draw a 3D plot
+plot3d(ww_trans.sub.pca$x[ , 1:3], col=as.integer(ww$quality.con)) 
+#rgl.postscript("3d_pca.pdf","pdf")
 ```
+![Alt text](/3d_pca_subset.JPG)
+Again, the seperation of classes becomes worse with the selected variables pca.
 
-```{r}
-suga.dens.scatter1 <- PlotScatter(ww, "residual.sugar", "density", "quality.order")
-
-suga.dens.scatter1 +
-  coord_cartesian(xlim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.98)),
-                  ylim = c(min(ww$density), quantile(ww$density, 0.99)))
-```
-
-
-
-
-
-```{r}
-NaCl.dens.scatter1 <- PlotScatter(ww, "chlorides", "density", "quality.order")
-NaCl.dens.scatter2 <- PlotScatter(ww, "chlorides", "density", "quality.bucket")
-
-NaCl.dens.scatter1.1 <- NaCl.dens.scatter1 +
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
-
-NaCl.dens.scatter2.1 <- NaCl.dens.scatter2 +
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
-
-grid.arrange(NaCl.dens.scatter1.1, NaCl.dens.scatter2.1, ncol=2)
-```
-
-```{r}
-NaCl.dens.scatter1.2 <- NaCl.dens.scatter1 +
-  scale_x_log10()+
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
-
-NaCl.dens.scatter2.2 <- NaCl.dens.scatter2 +
-  scale_x_log10()+
-  coord_cartesian(ylim = c(min(ww$density), quantile(ww$density, 0.999)))
-
-grid.arrange(NaCl.dens.scatter1.2, NaCl.dens.scatter2.2, ncol=2)
-```
- 
-
-```{r echo=FALSE }
-# Explore distribution of residual.sugar variable by quality.order
-by(ww$residual.sugar, ww$quality.order, summary)
-
-qplot(x = residual.sugar, data = ww, binwidth =0.1)+
-  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
-                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 2))+
-  facet_wrap(~quality.order, ncol = 2, scales="free_y")
-
-qplot(x = residual.sugar, data = ww, binwidth = 0.1, geom = 'freqpoly', color = quality.order)+
-  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
-                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 1))+
-  scale_color_brewer()+
-  theme_dark()
-
-qplot(x= quality.order, y= residual.sugar, data = ww, geom = 'boxplot')+
-  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
-  coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)))+
-  geom_jitter(alpha = 1/10)
-```
-
-```{r}
-P1 <- PlotScatter(ww, "quality", "residual.sugar", "alcohol.bucket")+
-  geom_jitter(alpha = 1/10)
-
-P1 + coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.99))) 
-
-P1 + ylim(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.5))
-
-P1 + ylim(quantile(ww$residual.sugar, 0.5), quantile(ww$residual.sugar, 0.99))
-```
-
-```{r}
-P2 <- PlotScatter(ww, "quality", "residual.sugar", "alcohol.body")+
-  geom_jitter(alpha = 1/10)
-
-P2 + coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.99))) 
-
-P2 + ylim(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.5))
-
-P2 + ylim(quantile(ww$residual.sugar, 0.5), quantile(ww$residual.sugar, 0.99))
-```
-
-```{r echo=FALSE }
-# Explore distribution of residual.sugar variable by alcohol.bucket
-qplot(x = residual.sugar, data = ww, binwidth = 0.1, geom = 'freqpoly', color = alcohol.bucket)+
-  scale_x_continuous(limits = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)),
-                     breaks = seq(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95), 1))+
-  scale_color_brewer()+
-  theme_dark()
-
-qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
-  stat_summary(fun.y= mean, geom = 'point', shape = 4, color = 'blue')+
-  coord_cartesian(ylim = c(min(ww$residual.sugar), quantile(ww$residual.sugar, 0.95)))+
-  geom_jitter(alpha = 1/10)
-```
+### Building the Linear Model
 
 
 
@@ -1066,3 +886,9 @@ qplot(x= alcohol.bucket, y= residual.sugar, data = ww, geom = 'boxplot')+
 - [renaming columns](http://www.cookbook-r.com/Manipulating_data/Renaming_columns_in_a_data_frame/)
 - [three digits after decimal point printed in mtable](https://s3.amazonaws.com/content.udacity-data.com/courses/ud651/diamondsExample_2016-05.html)
 - [Standardise variables](http://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/multivariateanalysis.html)
+- [PCA plot using princomp() and qgraph](http://geog.uoregon.edu/GeogR/topics/pca.html)
+- [visualize PCA, factoextra lib coupled with prcomp()](http://www.sthda.com/english/rpkgs/factoextra/reference/fviz_pca.html)
+- [prcomp() vs. princomp()](http://www.sthda.com/english/wiki/principal-component-analysis-in-r-prcomp-vs-princomp-r-software-and-data-mining)
+- [draw 3d pca](http://planspace.org/2013/02/03/pca-3d-visualization-and-clustering-in-r/)
+- [rgl plot3d color points by group](http://r.789695.n4.nabble.com/plot3d-color-points-by-group-td3312955.html)
+- [add an image to markdown](https://rpubs.com/RatherBit/90926)
