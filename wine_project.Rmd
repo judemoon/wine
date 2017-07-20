@@ -1,10 +1,11 @@
-# Physicochemical and Sensory Analysis for Wine Quality  
+# Expore and Summarize Physicochemical Property Data for Whie Wine Quality  
 ### July 2017, by Jude Moon
 
-========================================================
-
 # 1.Overview
-In this project, I will use a white wine quality data set for [Portuguese "Vinho Verde" wine](http://www.vinhoverde.pt/en/about-vinho-verde), whose data were collected and published by [Cortez et al (2009)](http://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub). This tidy data set contains 4,898 white wines with 11 variables on quantifying the physicochemical properties of each wine. At least 3 wine experts rated the quality of each wine, providing a rating between 0 (very bad) and 10 (very excellent). Details and units of the variables are provided [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt). The objectives of the analysis is to explore data to determine (1) whether any relationship between the physicochemical properties and sensory quality exists and (2) if so, which physicochemical properties are the most effective to describe qualty, in other words, which properties are highly correlated with the quality score. 
+In this project, I will use a white wine quality data set for [Portuguese "Vinho Verde" wine](http://www.vinhoverde.pt/en/about-vinho-verde), whose data were collected and published by [Cortez et al (2009)](http://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub). This tidy data set contains 4,898 white wines with 11 variables on quantifying the physicochemical properties of each wine. At least 3 wine experts rated the quality of each wine, providing a rating between 0 (very bad) and 10 (very excellent). Details and units of the variables are provided [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt). The objectives of the analysis is to explore data to determine (1) whether any relationship between the physicochemical properties and sensory quality exists and (2) if so, which physicochemical properties are the most effective to describe quality, in other words, which properties are highly correlated with the quality score. 
+
+------
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Load all of the packages that you end up using
 # in your analysis in this code chunk.
@@ -46,16 +47,15 @@ library(rgl)
 ww <- read.csv('wineQualityWhites.csv') 
 ```
 
-------
 # 2. Analysis
 ## 2.1.2 Univariate Plots Section
-
-### Data Summary: 
+### Data Summary
 #### What are the data types of the columns?
 ```{r echo=FALSE}
 # Display data type of each column
 str(ww)
 ```
+
 All columns are numeric or continuous, except X and quality. X is wine sample ID, so changing to factor data type would make more sense.
 
 #### What are the data ranges of variables?
@@ -64,14 +64,16 @@ All columns are numeric or continuous, except X and quality. X is wine sample ID
 ww$X <- factor(ww$X, ordered = F)  
 summary(ww)
 ```
-The data range of each variable varies, e.g., volatile.acidity ranges from 0.08 to 1.1 while total.sulfur.dioxide ranges from 9 to 440. This suggests that data transformation such as standardization might require to compare two variables. 
+
+The data range of each variable varies, e.g., volatile.acidity ranges from 0.08 to 1.1 while total.sulfur.dioxide ranges from 9 to 440. This suggests that data transformation such as standardization might be required to compare two variables. 
 
 #### Is there any missing values (na) or any zero values?
 ```{r echo=FALSE, Univariate_Plots_Missing}
 #summary(is.na(ww))
 summary(ww == 0)
 ```
-There is no missing value, but Variable citric.acid has 19 zeros. I will assume that they are true zeros.
+
+Variable citric.acid has 19 zeros. I will assume that they are true zeros.
 
 ### Quality score: response variable or label feature
 #### Can I engineer this variable simpler to interpret?
@@ -91,12 +93,13 @@ plot(ww$quality.order, xlab = 'quality.order')
 ProportionTable <- function(col) {
   freq <- table(col)
   prop <- (freq/length(col))*100
-  return(prop)
+  return(list("% of each group", prop))
 }
 
 # Create a proportion table for quality.order
 ProportionTable(ww$quality.order)
 ```
+
 Quality is normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines have a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 are 92.6% and 99.5% respectively. 
 
 #### What are the distributions of 3-classes variables?
@@ -118,7 +121,9 @@ The other I named **quality.lib** separates quality in a liberal way, where wine
 The distribution of quality.con is relatively even in the 3 classes, while that of quality.lib varies. The purpose of using quality.con would be to find general trends of low and high quality wine, while quality.lib would be better for screening exceptionally low or high quality wine.
 
 ### Variables related to features
-I sorted some of variables into a related features to help organize variables as a meaningful order.
+I sorted some of variables into a related feature in order to organize variables as a meaningful order.
+
+
 | Order |     Feature     |                        Variables                        |
 |:-----:|:---------------:|:-------------------------------------------------------:|
 |   1   |       body      |                         alcohol                         |
@@ -128,11 +133,14 @@ I sorted some of variables into a related features to help organize variables as
 |   5   | sour or acidity |   pH, fixed.acidity, volatile.acidity, and citric.acid  |
 |   6   |   preservative  | sulphates,total.sulfur.dioxide, and free.sulfur.dioxide |
 
+
 ### Alcohol content
 #### How the alcohol variable is distributed? Any new variables are needed?
 The weakest and the strongest white wines are 8.0% and 14.2% of alcohol, respectively. The distributions of < 9.5, 9.5-10.4, 10.5-11.4, and >11.4 are even, so I created a new variable called **alcohol.bucket**, which separated alcohol content into 4 classes. This might help with further analysis on its relationship with other variables.
 
-Additionally, as a conventionaly rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth. In addition to alcohol.bucket, I created a new variable called **alcohol.body**, which separated alcohol content into 3 classes. This might help to understand relationship between the preference of wine body and wine quality.
+Additionally, as a conventionally rule, light-bodied wines are 7-11 % alcohol, medium run 11-13%, and full-bodied are over 13%. The body of the wine is how it feels in your mouth. When a wine is full-bodied, it completely coats the palate and tends to feel heavier in the mouth. Also, the texture of the wine either smooth/velvety or coarse/brash contributes to feeling in the mouth. In addition to alcohol.bucket, I created a new variable called **alcohol.body**, which separated alcohol content into 3 classes. This might help to understand relationship between the preference of wine body and wine quality.
+
+
 ```{r echo=FALSE, fig.height=3, fig.width=5, message=FALSE, warning=FALSE}
 # Create new varaibles by cutting into buckets
 ww$alcohol.bucket <- cut(ww$alcohol,
@@ -142,12 +150,12 @@ ww$alcohol.body <- cut(ww$alcohol,
 
 # Create a function to generate a histogram with color encoding of categorical variable,
 # a table, and a proportion table
-Plot1 <- function(col1, col2) {
-  a <- qplot(x = col1, data = ww, binwidth = 0.1, color = I('black'), fill = col2)+
-  scale_x_continuous(limits = c(min(col1), max(col1)),
-                     breaks = seq(8, max(col1), 1))
-  b <- table(col2)
-  c <- ProportionTable(col2)
+Plot1 <- function(alcohol, group) {
+  a <- qplot(x = alcohol, data = ww, binwidth = 0.1, color = I('black'), fill = group)+
+  scale_x_continuous(limits = c(min(alcohol), max(alcohol)),
+                     breaks = seq(8, max(alcohol), 1))
+  b <- table(group)
+  c <- ProportionTable(group)
   return(list(a, b, c))
 }
 
@@ -155,10 +163,12 @@ Plot1 <- function(col1, col2) {
 Plot1(ww$alcohol, ww$alcohol.bucket)
 Plot1(ww$alcohol, ww$alcohol.body)
 ```
-The distribution is little bit skewed to the left with mostly (68%) being light-bodied (acohol <= 11). But I don't think that it requires transformation because the skewness seems minor. 
+
+The distribution is little bit skewed to the left with mostly (68%) being light-bodied (alcohol <= 11). But I don't think that it requires transformation because the skewness seems minor. 
 
 ### Sugar content
-#### How the residual.sugar variable is distriubted? Any new variables are needed?
+#### How the residual.sugar variable is distributed? Any new variables are needed?
+
 ```{r echo=FALSE, fig.height=3, fig.width=7, message=FALSE, warning=FALSE}
 # Explore distribution of residual.sugar variable
 sugar.dist <- qplot(x = residual.sugar, data = ww, binwidth =0.1)+
@@ -176,6 +186,7 @@ sugar.dist.log <- qplot(x = residual.sugar, data = ww,
 grid.arrange(sugar.dist, sugar.dist.log,  ncol=2)
 ProportionTable(ww$sugar.bucket)
 ```
+
 The distribution of residual sugar content is skewed with a right long tail. Thus, the log10 transformation helps better understand the distribution of sugar content. It appears to be bimodal with sugar content peaking at around 1.5 or so and again at 8 g/L or so. I created a new variable called **sugar.bucket**, which separated sugar content into 2 classes: <=2.5 (35%) and >2.5 (65%). 
 
 According to [data info notes](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt), it is rare to find wines with less than 1 g/L of sugar. And wines with greater than 45 g/L sugar are considered sweet.
@@ -190,16 +201,18 @@ proportion <- function(col, i) {
 proportion(ww$residual.sugar, 1)
 100-proportion(ww$residual.sugar, 45)
 ```
+
 The white wine less than 1 g/L is 1.6% of the total. And sweet white wine is only 0.02% of the total, which is very small. I am not sure if "Vinho Verde" white wines are not sweet in general, or if the cutoff of sugar content is more for red wine in general. 
-#### How the sugar contents are distriubted for red wines?
-```{r echo=FALSE, Univariate_Plots_residual.sugar from red wines}
+
+#### How the sugar contents are distributed for red wines?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 rw <- read.csv('wineQualityReds.csv')
 summary(rw$residual.sugar)
 ```
 Just quick overviewing the stats of residual sugar content from red wines, the Midian is 2.2 and the max is 15.5 g/L which are a lot lower than white wines. Thus, the cutoff (45 g/L) of sugar content for sweet wines is not for red wines either.
 
 ### NaCl(salt) content
-#### How the nacl content variable is distriubted?
+#### How the NaCl content variable is distributed?
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of chlorides variable
 NaCl.dist <- qplot(x = chlorides, data = ww, binwidth =0.001)+
@@ -219,7 +232,7 @@ proportion(ww$chlorides, 0.1)
 The distribution of NaCl content is skewed with a right long tail. Thus, the log10 transformation helps better understand the distribution of NaCl content, which looks close to normal. A majority (97.8%) of white wines are less than 0.1 g/L in NaCl content and those between 0.04 and 0.05 are common.
 
 ### Density
-#### How the density variable is distriubted?
+#### How the density variable is distributed?
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Explore distribution of density variable
 density.dist <- qplot(x = density, data = ww, binwidth =0.0001)+
@@ -237,6 +250,7 @@ summary(ww$density)
 # Calculate percentages of wines with less than 1 Kg/L
 100-proportion(ww$density, 1)
 ```
+
 The lightest and heaviest wines are 0.9871 and 1.0390 Kg/L in density, respectively. Most white wines are between 0.9917 and 0.9961 Kg/L in density. Although the distribution is skewed to the right, log or square root transformations did not improve normality. Excluding top 0.1% helps to better understand the distribution. 
 Density possibly contributes to taste of wine. Density depends on the alcohol and sugar contents. The wines heavier than or equal to water (1 Kg/L) are rare (1.9%). 
  
@@ -312,6 +326,7 @@ qplot(x = citric.acid, data = ww, binwidth =0.01)+
                      breaks = seq(0.45, 0.55, 0.01))
 
 ```
+
 (1) pH is already in log term so the distribution is normal. The lowest and the highest in pH of white wine are 2.72 and 3.82, respectively. The most common pH was between 3.1 and 3.3.
 
 (2) tartaric acid: the lowest and highest in tartaric acid content are 3.8 and 14.2 g/L, respectively. Most white wines are between 6.3 and 7.3 g/L in tartaric acid. 
@@ -453,7 +468,7 @@ dim(ww_subset)
 ```
 The outlier detected is X = 2782 with Sq. Mahalanobis Distance of 3800. Observation 2782 has extreme values in acetic acid, sugar, and density, and the values of the other variables are far from the medians. I decided to delete this row.
 
-I have noticed that the columns' names are too long for such scatterplot matrix so I will rename all the columns for simplicity and readibility on the plots.
+I have noticed that the columns' names are too long for such scatterplot matrix so I will rename all the columns for simplicity and readability on the plots.
 ```{r message=FALSE, warning=FALSE, rename_col}
 # Rename variables 
 ww_subset <- rename(ww_subset, 
@@ -470,7 +485,7 @@ ww_subset <- rename(ww_subset,
          "quality" = "qual"))
 ```
 
-I will generate a new datafram that includes log- or squareroot-transformed data according to the univariate analysis results.
+I will generate a new dataframe that includes log- or square root-transformed data according to the univariate analysis results.
 ```{r message=FALSE, warning=FALSE, transformed_dataframe}
 # Create another dataframe including transformed data
 tart.log <- log10(ww_subset$tart)
@@ -508,6 +523,7 @@ ggpairs(ww_trans,
         upper = list(continuous = wrap("cor", size = 4, color = 'black'))) + 
   theme_void()
 ```
+
 - The main feature of interest is quality. Alcohol, density, NaCl, acetic acid, and total SO2 seem to have medium to weak correlation with quality score. 
 - Other than main features, density is an interesting variable, which has strong correlations with alcohol, sugar, and total SO2 and weak correlations with NaCl, free SO2, and tartaric acid. 
 - Alcohol is correlated with NaCl, total SO2, sugar, and free SO2. 
@@ -518,7 +534,7 @@ ggpairs(ww_trans,
 - NaCl and total SO2 weakly were correlated.
 
 ### Correlation Network Matrix
-```{r echo=FALSE, fig.height=7, fig.width=6, message=FALSE, warning=FALSE, r echo=FALSE}
+```{r echo=FALSE, fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
 qgraph(cor(ww_trans))
 qgraph(cor(ww_trans), minimum=0.2, edge.labels=TRUE, edge.label.cex=1.5)
 ```
@@ -529,21 +545,21 @@ qgraph(cor(ww_trans), minimum=0.2, edge.labels=TRUE, edge.label.cex=1.5)
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Build the Linear Model
 qual.alco1 <- lm(quality ~ alcohol, data = ww)
-qual.alco2 <- lm(quality ~ alcohol, data = ww[ww$quality>4, ])
+qual.alco2 <- lm(quality ~ alcohol, data = ww[ww$quality>4, ]) # subset quality higher than 4
 qual.dens <- lm(quality ~ density, data = ww)
 mtable(qual.alco1, qual.alco2, qual.dens, sdigits = 3)
 ```
+
 Alcohol can explain 19% of the variance in quality score and density can 10%. The subset of data with quality higher than 4 shows that alcohol can explain 22% of the variance in quality.
 
 ### Categorical variable analysis: boxplot or density plot
-```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
-# Create categorical variables of quality in ww_trans dataframe
-#ww_trans$quality.con <- ww$quality.con
-#ww_trans$quality.lib <- ww$quality.lib
-```
+
 ### Boxplots grouped by quality.con
+
 I will create boxplots of all physicochemical properties grouped by quality.cons (<6, 6, >6) to find general trends. 
-#### Is there any noticeable trend from low and middle to high quality, which was not detected from correllation analysis?
+
+#### Is there any noticeable trend from low and middle to high quality, which was not detected from correlation analysis?
+
 ```{r echo=FALSE, fig.height=4, fig.width=3, message=FALSE, warning=FALSE}
 # Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
 Plot2 <- function(col, Quality, lab) {
@@ -556,6 +572,7 @@ for (i in 1:11) {
   print(Plot2(ww_trans[ , i], ww$quality.con, colnames(ww_trans)[i]))
 }
 ```
+
 Alcohol, NaCl, density, and pH seem to have consistent trends from low to high quality wines. For the other properties, in contrast, the high quality wines share a similar distribution of the other level of quality. 
 
 It is surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there is no correlation between sugar and quality (r = -0.065). This makes me wonder if linear relationship was hidden due to bimodality.
@@ -595,6 +612,7 @@ for (i in 1:11) {
   print(Plot3(ww_trans[ , i], ww$quality.lib, colnames(ww_trans)[i]))
 }
 ```
+
 The density plots of alcohol, NaCl, density, and pH are reconfirming that for these properties the distributions of very high quality differs from that of very low quality. In addition, SO4 of high quality wine has slightly different distribution from medium and low quality wine. And acetic acid, total SO2 and free SO2 seem to have distinct trends of low quality wine compared to mediumn and high quality wine, which were not detected from boxplots.
 
 ### Density plots and regression grouped by sugar.bucket
@@ -620,7 +638,9 @@ by(ww$residual.sugar, ww$sugar.bucket, summary)
 print("quality")
 by(ww$quality, ww$sugar.bucket, summary)
 ```
-The distribution of each sub-group by sugar is close to normal with its own central. Low sugar group (<2.5) has a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Despite the bimodality of residual.sugar distribution, the quality in both groups is distributed very similarily, with the quality median of 6. 
+
+
+The distribution of each sub-group by sugar is close to normal with its own central. Low sugar group (<2.5) has a median of 1.5 while high sugar group (>2.5) had a median of 8.2. Despite the bimodality of residual.sugar distribution, the quality in both groups is distributed very similarly, with the quality median of 6. 
 
 #### Do correlations between sugar and quality differ in the two groups?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -648,7 +668,7 @@ with(subset(ww, sugar.bucket == "(2.5,32]"), cor.test(residual.sugar, quality))
 The correlation with quality is improved a little bit by separating into two groups. Low sugar group (0.5,2.5] is positively correlated with quality (r=0.172), while high sugar group (2.5,32] is negatively correlated with quality (r=-0.156).
 
 ### Relationship between freeSO2 vs. quality
-Density plot of freeSO2 showed an interesting trends although linear regression and boxplot did not show any promissing trends. Low quality wines are relatively more distributed to high-end as well as low-end freeSO2 while medium and high quality wines remain at the middle level of freeSO2. I wonder if too high or too low amounts of freeSO2 are related to low quality of wine.
+The density plot of freeSO2 showed an interesting trend although linear regression and boxplot did not show any promising trends. Low quality wines are relatively more distributed to high-end as well as low-end freeSO2 while medium and high quality wines remain at the middle level of freeSO2. I wonder if too high or too low amounts of freeSO2 are related to low quality of wine.
 
 #### What are the distributions of quality in the sub-groups by freeSO2?
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
@@ -688,12 +708,15 @@ ww$totalSO2.bucket <- cut(ww$total.sulfur.dioxide,
 
 Plot5(ww$total.sulfur.dioxide, ww$totalSO2.bucket)
 ```
-Similarily, the quality of extreme case (0.9% of the wine samples) where total SO2 are lower than 30 mg/L or higher than 250 mg/L is shown to be low. So, if white wine has too little or too much total SO2, the quality unlikely would be higher than 6. 
+Similarly, the quality of extreme case (0.9% of the wine samples) where total SO2 are lower than 30 mg/L or higher than 250 mg/L is shown to be low. So, if white wine has too little or too much total SO2, the quality unlikely would be higher than 6. 
 
 
-### Rerationship between acetic acid vs. quality
+### Relationship between acetic acid vs. quality
+
 The distribution of acetic acid by quality also suggests the possibility of that high-end values are an indicator of low quality wine.  
+
 #### What are the distributions of quality in the sub-groups by acetic acid?
+
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Create new varaible by cutting into 3 buckets
 ww$acetic.bucket <- cut(ww$volatile.acidity,
@@ -703,9 +726,12 @@ Plot5(ww$volatile.acidity, ww$acetic.bucket)
 ```
 It is very rare (0.1% of the sample size) that the wine would have acetic acid exceeding 0.8 g/L but if white wine has too much acetic acid, the quality unlikely would be higher than 5. 
 
-### Rerationship between citric acid vs. quality
+### Relationship between citric acid vs. quality
+
 Although the median of citric acid is 0.32, there is unusual high count (4% of sample size) at 0.49 g/L and there is zero value for about 0.4% of sample. 
+
 #### What are the distributions of quality when citric acid is at 0.49 or 0?
+
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Create a new variable by converting numerical to logical data type
 ww$citr0.49 <- ww$citric.acid == 0.49 # True being citric.acid == 0.49 and False being != 0.49
@@ -720,7 +746,7 @@ print("citr0")
 qplot(x = quality, data = ww, geom = 'density', color = citr0)
 by(ww$quality, ww$citric.acid == 0.0, summary)
 ```
-The quality distribution of the group with citric acid of 0.49 seems similar to the distribution by remaining samples, while the wines with zero citric acid are relatively lower in quality and they unlikely would have quality higher than 6.  
+The quality distribution of the group with citric acid of 0.49 seems similar to the distribution by remaining samples, while the wines with zero citric acid are relatively lower in quality, and they unlikely would have quality higher than 6.  
 
 
 ## 2.2.2 Bivariate Analysis
@@ -728,12 +754,12 @@ The quality distribution of the group with citric acid of 0.49 seems similar to 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
 The scatterplot matrix, boxplots and density plots grouped by quality.con and qality.lib, consistently showed relationship of quality with alcohol, density and NaCl, and to a lesser extent with pH, acetic acid, and total SO2. The highest correlation r values with quality were alcohol and density, but were not that strong: 0.436 and -0.307, respectively. And none of single variable alone can explain the variance in quality score more than 19%. I wonder if the combination of two or more variables can make better prediction model for quality. 
 
-It was surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there was no correlation between sugar and quality (r = -0.065). Due to bimodality, some relationship could be hidden. Actually, the data of each modal behaved differently with quality. In low sugar group (<2.5 g/L), sugar was positively correlated with quality (r=0.172), while in high sugar group (>2.5 g/L), sugar was negatively correlated with quality (r=-0.156). 
+It was surprising to see some consistent trends of decreasing sugar with increasing quality from the boxplot although there was no correlation between sugar and quality (r = -0.065). Due to bimodality, some relationship could be hidden. The data of each modal behaved differently with quality. In low sugar group (<2.5 g/L), sugar was positively correlated with quality (r=0.172), while in high sugar group (>2.5 g/L), sugar was negatively correlated with quality (r=-0.156). 
 
 freeSO2, totalSO2, and acetic acid showed that the extremely high or/and low values or even zero values of these variables were associated with low quality wine, though the extreme cases were very rare like about 0.1 to 1 %. 
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
-Strong correlations were detected among density, alcohol, total SO2, sugar, and NaCl. This indicated that these variables might be dependent on each other for some degree. The density of wine depends on content of alcohol, sugar, salts etc. Because alcohol is lighter than water (1kg/L), the more alcohol, the lower density can be achieved. And since solute such as sugar, NaCl, and SO2 contributes to adding density of solution, the more solute, the higher density can be achieved. As mentioned at the univariate analysis, during the fermentation process, sugar is taken up by yeast to produce alcohol. In general, the more alcohol content in wine, the less sugar remains. All of these correlations were observed either strongly or weakly.
+Strong correlations were detected among density, alcohol, total SO2, sugar, and NaCl. This indicated that these variables might be dependent on each other for some degree. The density of wine depends on content of alcohol, sugar, salts etc. Because alcohol is lighter than water (1kg/L), the more alcohol, the lower density can be achieved. And since solute such as sugar, NaCl, and SO2 contributes to adding density of solution, the more solute, the higher density can be achieved. As mentioned at the univariate analysis, during the fermentation process, sugar is taken up by yeast to produce alcohol. In general, the more alcohol content in wine, the less sugar remains. These correlations were observed either strongly or weakly.
  
 ### What was the strongest relationship you found?
 The correlations between density and alcohol and between density and sugar were the strongest in white wine dataset with r value of -0.78 and 0.756, respectively. This information can be helpful for guiding wine choice based on taste preference such as sweat or dry and heavy- or light-bodied, yet weakly predicting wine based on quality. 
@@ -744,10 +770,11 @@ Among physicochemical properties, a single variable that had the strongest corre
 ## 2.3.1 Multivariate Plots Section
 
 ### PCA (Principal component analysis)
-One way to deal with multivariate dataset is to reduce dementionality by using PCA. For the first attempt, I will use all physicochemical properties from ww_trans dataframe. PCA might be very sensitive to different units and differences in variability among the variables. So, I will run PCA with scale which standardizing the variables to have 0 mean and 1 std.
+One way to deal with multivariate dataset is to reduce dimensionality by using PCA. For the first attempt, I will use all physicochemical properties from ww_trans dataframe. PCA might be very sensitive to different units and differences in variability among the variables. So, I will run PCA with scale which standardizing the variables to have 0 mean and 1 std.
 
 
 #### What are the stdev and variance of each component, and variance?
+
 ```{r echo=FALSE, fig.height=4, fig.width=5, message=FALSE, warning=FALSE}
 # Create a PCA data matrix
 ww_trans.pca <- prcomp(ww_trans[,-12], scale=TRUE)
@@ -756,6 +783,8 @@ summary(ww_trans.pca)
 # Create a scree plot
 screeplot(ww_trans.pca, type = "lines")
 ```
+
+
 [The Kaiser criterion](http://www.uta.edu/faculty/sawasthi/Statistics/stfacan.html) suggested that we can retain only factors with eigenvalues greater than 1. That means I can keep PC1 through PC4. But the obvious change in slope occurs between 2 and 3, which is the elbow of the scree plot. I can focus on PC1 and PC2.
 
 #### What are the correlations of variables with PC1 and PC2?
@@ -782,6 +811,7 @@ final_pca <- fviz_pca_biplot(ww_trans.pca, repel=TRUE, # repel to avoid overplot
 
 final_pca
 ```
+
 As I expect, there is no distinct grouping by quality.con. The classes of quality are highly overlapping. However, there is a general trend of low to high quality from left top to right bottom, where most low quality wines are on the left side (Dim1<0) while most high quality wines are on the right side (Dim1>0). Thus, the quality seems positively related to Dim1 or PC1 which is highly influence by alcohol, density, sugar, NaCl, and total SO2.
 
 #### What is the correlation between PC1 and quality?
@@ -797,10 +827,12 @@ The correlation r value between PC1 and quality is 0.282, which is not better th
 plot3d(ww_trans.pca$x[ , 1:3], col=as.integer(ww$quality.con)) # grouped by quality.con
 #rgl.postscript("3d_pca.pdf","pdf")
 ```
-![Alt text](/3d_pca.JPG)
+![3D PCA plot](3d_pca.JPG)
+
+
 The 3D-plot of PCA does not show any better separation of the classes.
 
-#### What about selecting only variables that are often shown to be related each others? Would this improve in explaining quality?
+#### What about selecting only variables that are often shown to be related each other? Would this improve in explaining quality?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 qgraph.pca(ww_trans[, c(1,2,3,4,10)], factors=2, rotation="varimax")
 ```
@@ -845,10 +877,9 @@ It helps little bit. The correlation r value is 0.330 but the individual points 
 plot3d(ww_trans.sub.pca$x[ , 1:3], col=as.integer(ww$quality.con)) 
 #rgl.postscript("3d_pca.pdf","pdf")
 ```
-![Alt text](/3d_pca_subset.JPG)
+![3D PCA plot with subset](3d_pca_subset.JPG)
+
 Again, the separation by classes is not very good.
-
-
 
 
 ### Building the Linear Model
@@ -882,7 +913,7 @@ m11 <- update(m10, ~ . + PC11)
 
 mtable(m1, m2, m3, m4, m5, m6,m7,m8,m9,m10,m11, sdigits = 3)
 ```
-Unfortunately, the r-squared value of this linear model is 0.302, meaning this model can explain only 30% of variance in qaulity.
+Unfortunately, the r-squared value of this linear model is 0.302, meaning this model can explain only 30% of variance in quality.
 
 #### Can the combination of transformed variables explain quality?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -902,18 +933,18 @@ m11 <- update(m10, ~ . + suga.log)
 
 mtable(m1, m2, m3, m4, m5, m6,m7,m8,m9,m10,m11, sdigits = 3)
 ```
-The r-squared value of this linear model is 0.298, explaining 30% of variance in qaulity, which is similar to the previous model with PCA scores. As I expect, a linear model probably is not the best fit for this dataset.
+The r-squared value of this linear model is 0.298, explaining 30% of variance in quality, which is similar to the previous model with PCA scores. As I expect, a linear model probably is not the best fit for this dataset.
 
 ## 2.3.2 Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
-Yes, to some degree, the combination of two or more variables improved prediction model for quality. From bivariate analysis, the highest r-squared value of linear model by a single variable was about 0.19. But by building model with combination of variables, the r-squared value increased up to 0.3.
+Yes, to some degree, the combination of two or more variables improved prediction model for quality. From bivariate analysis, the highest r-squared value of linear model by a single variable was about 0.19. But by building model with the combination of variables, the r-squared value increased up to 0.3.
 
 ### Were there any interesting or surprising interactions between features?
-I mostly focused on performing PCA for multivariate analysis and I performed PCA on all variables and compared to PCA on 5 variables which were likely shown to be associated with quality. The PCA plot by the subset of variables did not really improve the separation of quality classes and there was a little improvement on the correlation between PC1 and quality. I may have chosen the variables are highly correlated each other (they seem dependent to each other) that does not really add any information to it.  
+I mostly focused on performing PCA for multivariate analysis and I performed PCA on all variables and compared to PCA on 5 variables which were likely shown to be associated with quality. The PCA plot by the subset of variables did not really improve the separation of quality classes and there was a little improvement on the correlation between PC1 and quality. I may have chosen the variables were highly correlated each other (they seemed dependent to each other) that does not really add any information to it.  
 
 ### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
-As I mentioned previously, the linear model with combination of variables help increase a little bit of r-squared value, but not by much. And the prediction power is lower than 45% where predicting all wines as median quality (6) irrespect to the physicochemical properties. It indicates that a linear model probably is not the best fit for this dataset. As the distribution of sugar contents (bimodality) and free&total SO2 and acetic acid (threshold effects) hinted, decision tree could be a good candidate, where a model predicts the value of a target variable by learning simple decision rules inferred from the data features. 
+As I mentioned previously, the linear model with combination of variables helped increase a little bit of r-squared value, but not by much. And the prediction power of the model was lower than 45% where predicting all wines as median quality (6) regardless of the physicochemical properties. It indicates that a linear model probably is not the best fit for this dataset. As the distribution of sugar contents (bimodality) and free&total SO2 and acetic acid (threshold effects) hinted, decision tree could be a good candidate, where a model predicts the value of a target variable by learning simple decision rules inferred from the data features.
 
 
 ------
@@ -936,7 +967,7 @@ text(7, 1900, "(group size / total) * 100%")
 ```
 
 ### Description One
-Quality was normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5%, respectively, wherease it is very rare to be quality 3 or 9. 
+Quality was normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5%, respectively, whereas it is very rare to be quality 3 or 9. 
 
 ### 3.2 Plot Two
 ```{r echo=FALSE, fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
@@ -962,21 +993,25 @@ final_pca
 ```
 
 ### Description Three
-PCA biplot was contructed by 1st dimiention scores on the x-axis and 2nd dimention scores on the y-axis and the points represent individual observations in the dataset, which were color-encoded by quality groups (<6, 6, and >6). The arrows represent correlation of each variables with the two dimention scores: the direction of arrow represents either positive or negative correlation, and the length represents magnitude of correlation coefficient. For example, the arrow of alcohol heads for the positive direction of 1st dimention score with relativel high length. This means that alcohol is strongly and positively correlated with Dim1.
+The PCA biplot was constructed by 1st dimension scores on the x-axis and 2nd dimension scores on the y-axis and the points represent individual observations in the dataset, which were color-encoded by quality groups (<6, 6, and >6). The arrows represent correlation of each variables with the two dimension scores: the direction of the arrow represents either positive or negative correlation with both axes, and the length represents the magnitude of correlation coefficient. For example, the arrow of alcohol heads for the positive direction of 1st dimension score with relatively high length. This means that alcohol is strongly and positively correlated with Dim1.
 
-There was a general trend from low to high quality as shifting from left to right, although the separation of groups was not quite clear. One of interesting interactions was that some of physicochemical properties were very dependant on each other. Increase in density of wines was influenced largely by decrease in alcohol and increase in most solutes such as sugar, NaCl, and SO2. In addition, increase in pH (decrease in acidity) was affected by decrease in tartaric acid and citric acid. This plot helped understand the relationship among the physicochemical properties rather than suggest a prediction for sensory quality.
+There was a general trend from low to high quality as shifting from left to right, although the separation of groups was not quite clear. One of interesting interactions was that some of physicochemical properties were very dependent on each other. Increase in density of wines was influenced largely by decrease in alcohol and increase in most solutes such as sugar, NaCl, and SO2. In addition, increase in pH (decrease in acidity) was affected by decrease in tartaric acid and citric acid. This plot helped understand the relationship among the physicochemical properties rather than suggest a prediction for sensory quality.
 
-One of my speculations on these trends with wine quality is that too much amount of any solutes might bring unpleasant smell and taste to wine, which was suggested by the arrows of all solutes were heading to the left where low quality wines more likely present around these coordinant. The high amount of solutes could be resulted from too early or too late harvesting time of wine product. If it is too early, a large amount of sugar remains in the wine, resulting in being too sweat. If it is too late, alcohol decompose to acetic acid, resulting in being too sour. 
+One of my speculations on these trends with wine quality is that too much amount of any solutes might bring unpleasant smell and taste to wine, which was suggested by the arrows of all solute variables were heading to the left where low quality wines more likely present around left-side coordinate. The high amount of the solutes could be resulted from too early or too late harvesting time of wine product. If its harvesting is too early, a large amount of sugar remains in the wine, resulting in being too sweat. If it is too late, alcohol decompose to acetic acid, resulting in being too sour. Alternatively, the sensory quality evaluation might be influenced by bias of expert tasters, who have a role to guide sort of standards of wine quality to the wine industry and customers. I think this might lead that wine experts value well-balanced flavors rather than exotic and unique flavors of wine for a broader range of customers. As a result, the wine with extreme or unique range of solutes might be rated low.  
 
-Overall, I have learned that predicting the quality of wine is very complicated and hard to accomplished solely based on physicochemical properties given. The limitation of these properties is only examing chemicals in the liquid stage. So, any gas form of chemicals such as aroma can be complementary information.   
+Overall, I have learned that predicting the quality of wine is very complicated and hard to be accomplished solely based on physicochemical properties given. The limitation of these properties is only examining chemicals in the liquid stage. So, any gas form of chemicals such as aroma can be complementary information to existing dataset.   
+
 ------
 
 # 4. Reflection
-One of my frustrations as a newbie to R was tuning plots one by one, like adjusting bin size, font, color, label, etc. Although I knew that all the plots did not need to be perfect at the exploring stage, tuning steps to increase aesthetic factors in plots took me a large chunk of time. To figure out how to change the visual factors I had to search examples and documentation of each library, becuase a lot of libraries do not share same functions and arguments. Despite the frustrations, I think R offers advantages such as flexibility and a lot of accessible libraries. Before this project, I have been using python for exploring datasets (e.g. titanic dataset). Compared to the python jupyter notebook, I have felt that the syntex of R is easiler and less restricted, and R provides a lot better graphs and more complex statistics with a simple line of code. But I had hard time to make functions or loops to avoid repeating codes. Unlike python, it lacks iterating functionality. I prefer to copy and paste codes rather than writing function, particularily when I try to draw chart. And another drawback, I felt, is that R runs slower than python and sometimes RStuio stopped running while I was working on this project. 
+One of my frustrations as a newbie to R was tuning plots one by one, like adjusting bin size, font, color, label, etc. Although I knew that all the plots did not need to be perfect at the exploring stage, tuning steps to improve aesthetic factors in plots took me a large chunk of time. To figure out how to change the visual factors I had to search examples and documentation of each library, because a lot of libraries do not share same functions and arguments. Despite the frustrations, I think R offers advantages such as flexibility and great accessibility to libraries. 
+Before this project, I have been using python for exploring datasets (e.g. titanic dataset). Compared to the python jupyter notebook, I have felt that the syntax of R is easier and less restricted, and R provides a lot better graphs and more complex statistics with a simple line of code. But I had hard time to make functions or loops to avoid repeating codes. Unlike python, it lacks iterating functionality. I prefer to copy and paste codes rather than writing function, particularly when I try to draw chart. And another drawback, I felt, is that R runs slower than python and RStuio stopped running several times while I was working on this project. 
 
-I have tried 3 different types of PCA functions: prcomp, and princomp, and psych.principal. How to get a summary about PCA matrix data was quite similar by using the tree methods, but for plotting PCA, each method can be implemented in a different plotting library. They were not exchangeable sometimes. What I wanted to do for the PCA biplot was to have variable vectors and to color data points by a group. I have tried many different arguments and attributes but I found a library to visualize plots specially for PCA with very minimum lines of codes, instead of extracing PCA scores into dataframe and making plots using ggplot.
+I have tried 3 different types of PCA functions: prcomp, and princomp, and psych.principal. How to get a summary about PCA matrix data was quite similar by using the tree methods, but for plotting PCA, each method can be implemented in a different plotting library. They were not exchangeable sometimes. What I wanted to do for the PCA biplot was to have variable vectors and to color data points by a group. I have tried many different arguments and attributes but I found a library (factoextra) to visualize plots specially for PCA with very minimum lines of codes, instead of extracting PCA scores into dataframe and making plots using ggplot.
 
-I think the next step for this project is performing machine learning algorithms. As I mentioned previously, decision tree can be one of candidate classifiers or regressions. 
+I think the next step for this project can be performing machine learning algorithms. As I mentioned previously, decision tree can be one of candidate classifiers or regressions.
+
+
 ------
 
 # 5. Sources
