@@ -749,7 +749,7 @@ One way to deal with multivariate dataset is to reduce dementionality by using P
 #### What are the stdev and variance of each component, and variance?
 ```{r echo=FALSE, fig.height=4, fig.width=5, message=FALSE, warning=FALSE}
 # Create a PCA data matrix
-ww_trans.pca <- prcomp(ww_trans, scale=TRUE)
+ww_trans.pca <- prcomp(ww_trans[,-12], scale=TRUE)
 summary(ww_trans.pca)
 
 # Create a scree plot
@@ -786,7 +786,7 @@ As I expect, there is no distinct grouping by quality.con. The classes of qualit
 # Correlation test 
 cor.test(ww_trans.pca$x[ , 1], ww$quality) # using x object to access the coordinates of the individuals (PC1 scores)
 ```
-The correlation r value between PC1 and quality is 0.398, which is not better than correlation between quality and alcohol alone (0.436). So, using all variables into PCA does not improve in explaining quality.
+The correlation r value between PC1 and quality is 0.282, which is not better than correlation between quality and alcohol alone (0.436). So, using all variables into PCA does not improve in explaining quality.
 
 #### How about 3D-plot using PC1, PC2, and PC3?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -795,11 +795,11 @@ plot3d(ww_trans.pca$x[ , 1:3], col=as.integer(ww$quality.con)) # grouped by qual
 #rgl.postscript("3d_pca.pdf","pdf")
 ```
 ![Alt text](/3d_pca.JPG)
-The 3D-plot of PCA shows better separation of the classes.
+The 3D-plot of PCA does not show any better separation of the classes.
 
 #### What about selecting only variables that are often shown to be related each others? Would this improve in explaining quality?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-qgraph.pca(ww_trans[, c(1,2,3,4,10,12)], factors=2, rotation="varimax")
+qgraph.pca(ww_trans[, c(1,2,3,4,10)], factors=2, rotation="varimax")
 ```
 ```{r echo=FALSE, fig.height=3, fig.width=4, message=FALSE, warning=FALSE}
 # Create a subset of dataframe
@@ -820,13 +820,21 @@ fviz_pca_biplot((ww_trans.sub.pca), repel=TRUE, # repel to avoid overplotting te
                 title="PCA biplot grouped by quality-selected variables")+ # change title
     theme_dark()
 ```
+```{r echo=FALSE, fig.height=6, fig.width=7, message=FALSE, warning=FALSE}
+# Create a biplot of individuals as points and variables as arrows
+fviz_pca_biplot((ww_trans.sub.pca), repel=TRUE, # repel to avoid overplotting text labels
+                label="var", col.var="blue", # show labels in blue and only for variables
+                habillage=ww$alcohol.bucket, palette="RdBu", # color points by grouping
+                title="PCA biplot grouped by Alcohol-selected variables")+ # change title
+    theme_dark()
+```
 
-#### What is the correlation between PC1 and quality?
+#### What is the correlation between PC1_selected and quality?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Correlation test 
 cor.test(ww_trans.sub.pca$x[ , 1], ww$quality) # using x object to access the coordinates of the individuals (PC1 scores)
 ```
-Well, it dosen't help much. The correlation r value is 0.330 but the classes become spread out compared to all variables PCA.
+It helps little bit. The correlation r value is 0.330 but the individual points become spread out compared to all variables PCA.
 
 #### How about 3D-plot using PC1, PC2, and PC3?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -835,19 +843,75 @@ plot3d(ww_trans.sub.pca$x[ , 1:3], col=as.integer(ww$quality.con))
 #rgl.postscript("3d_pca.pdf","pdf")
 ```
 ![Alt text](/3d_pca_subset.JPG)
-Again, the seperation of classes becomes worse with the selected variables pca.
+Again, the separation by classes is not very good.
+
+
+
 
 ### Building the Linear Model
+#### Can the combination of PCA scores explain quality?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Declare eigenvectors as short name for readibility
+PC1 <- ww_trans.pca$x[ , 1]
+PC2 <- ww_trans.pca$x[ , 2]
+PC3 <- ww_trans.pca$x[ , 3]
+PC4 <- ww_trans.pca$x[ , 4]
+PC5 <- ww_trans.pca$x[ , 5]
+PC6 <- ww_trans.pca$x[ , 6]
+PC7 <- ww_trans.pca$x[ , 7]
+PC8 <- ww_trans.pca$x[ , 8]
+PC9 <- ww_trans.pca$x[ , 9]
+PC10 <- ww_trans.pca$x[ , 10]
+PC11 <- ww_trans.pca$x[ , 11]
 
+# Building the Linear Model
+m1 <- lm(ww$quality ~ PC1)
+m2 <- update(m1, ~ . + PC2)
+m3 <- update(m2, ~ . + PC3)
+m4 <- update(m3, ~ . + PC4)
+m5 <- update(m4, ~ . + PC5)
+m6 <- update(m5, ~ . + PC6)
+m7 <- update(m6, ~ . + PC7)
+m8 <- update(m7, ~ . + PC8)
+m9 <- update(m8, ~ . + PC9)
+m10 <- update(m9, ~ . + PC10)
+m11 <- update(m10, ~ . + PC11)
 
+mtable(m1, m2, m3, m4, m5, m6,m7,m8,m9,m10,m11, sdigits = 3)
+```
+Unfortunately, the r-squared value of this linear model is 0.302, meaning this model can explain only 30% of variance in qaulity.
+
+#### Can the combination of transformed variables explain quality?
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Building the Linear Model
+
+m1 <- lm(qual ~ alco, data=ww_trans)
+m2 <- update(m1, ~ . + dens)
+m3 <- update(m2, ~ . + NaCl.log)
+m4 <- update(m3, ~ . + acet.log)
+m5 <- update(m4, ~ . + tSO2.sqrt)
+m6 <- update(m5, ~ . + tart.log)
+m7 <- update(m6, ~ . + fSO2.log)
+m8 <- update(m7, ~ . + acet.log)
+m9 <- update(m8, ~ . + citr.sqrt)
+m10 <- update(m9, ~ . + pH)
+m11 <- update(m10, ~ . + suga.log)
+
+mtable(m1, m2, m3, m4, m5, m6,m7,m8,m9,m10,m11, sdigits = 3)
+```
+The r-squared value of this linear model is 0.298, explaining 30% of variance in qaulity, which is similar to the previous model with PCA scores. As I expect, a linear model probably is not the best fit for this dataset.
 
 ## 2.3.2 Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+Yes, to some degree, the combination of two or more variables improved prediction model for quality. From bivariate analysis, the highest r-squared value of linear model by a single variable was about 0.19. But by building model with combination of variables, the r-squared value increased up to 0.3.
 
 ### Were there any interesting or surprising interactions between features?
+I mostly focused on performing PCA for multivariate analysis and I performed PCA on all variables and compared to PCA on 5 variables which were likely shown to be associated with quality. The PCA plot by the subset of variables did not really improve the separation of quality classes and there was a little improvement on the correlation between PC1 and quality. I may have chosen the variables are highly correlated each other (they seem dependent to each other) that does not really add any information to it.  
 
 ### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+As I mentioned previously, the linear model with combination of variables help increase a little bit of r-squared value, but not by much. It indicates that a linear model probably is not the best fit for this dataset. As the distribution of sugar contents (bimodality) and free&total SO2 and acetic acid (threshold effects) hinted, decision tree could be a good candidate, where a model predicts the value of a target variable by learning simple decision rules inferred from the data features. 
+
 
 ------
 
