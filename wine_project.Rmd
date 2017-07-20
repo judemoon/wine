@@ -972,9 +972,12 @@ Overall, I have learned that predicting the quality of wine is very complicated 
 ------
 
 # 4. Reflection
-One of my frustrations was tuning the plots, like adjusting bin size, font, color, label, etc. Although I knew that all the plots did not need to be perfect at the exploring stage, these tuning steps to increase aesthetic factors took me a large chunk of time. To figure how to change the visual factors I had to search 
+One of my frustrations as a newbie to R was tuning plots one by one, like adjusting bin size, font, color, label, etc. Although I knew that all the plots did not need to be perfect at the exploring stage, tuning steps to increase aesthetic factors in plots took me a large chunk of time. To figure out how to change the visual factors I had to search examples and documentation of each library, becuase a lot of libraries do not share same functions and arguments. Despite the frustrations, I think R offers advantages such as flexibility and a lot of accessible libraries. Before this project, I have been using python for exploring datasets (e.g. titanic dataset). Compared to the python jupyter notebook, I have felt that the syntex of R is easiler and less restricted, and R provides a lot better graphs and more complex statistics with a simple line of code. But I had hard time to make functions or loops to avoid repeating codes. Unlike python, it lacks iterating functionality. I prefer to copy and paste codes rather than writing function, particularily when I try to draw chart. And another drawback, I felt, is that R runs slower than python and sometimes RStuio stopped running while I was working on this project. 
 
-Compare to python
+I have tried 3 different types of PCA functions: prcomp, and princomp, and psych.principal. How to get a summary about PCA matrix data was quite similar by using the tree methods, but for plotting PCA, each method can be implemented in a different plotting library. They were not exchangeable sometimes. What I wanted to do for the PCA biplot was to have variable vectors and to color data points by a group. I have tried many different arguments and attributes but I found a library to visualize plots specially for PCA with very minimum lines of codes, instead of extracing PCA scores into dataframe and making plots using ggplot.
+
+I think the next step for this project is performing machine learning algorithms. As I mentioned previously, decision tree can be one of candidate classifiers or regressions. 
+------
 
 # 5. Sources
 - [relative frequency by a column]( http://www.r-tutor.com/elementary-statistics/qualitative-data/relative-frequency-distribution-qualitative-data)
