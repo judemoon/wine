@@ -97,7 +97,7 @@ ProportionTable <- function(col) {
 # Create a proportion table for quality.order
 ProportionTable(ww$quality.order)
 ```
-Quality is normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5% respectively. 
+Quality is normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines have a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 are 92.6% and 99.5% respectively. 
 
 #### What are the distributions of 3-classes variables?
 ```{r echo=FALSE, fig.height=3, fig.width=3, message=FALSE, warning=FALSE}
@@ -528,11 +528,12 @@ qgraph(cor(ww_trans), minimum=0.2, edge.labels=TRUE, edge.label.cex=1.5)
 #### What are the r-square values between quality vs. alcohol and quality vs. density?
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Build the Linear Model
-qual.model1 <- lm(I(quality) ~ I(alcohol), data = ww)
-qual.mode2 <- lm(I(quality) ~ I(density), data = ww)
-mtable(qual.model1, qual.mode2, sdigits = 3)
+qual.alco1 <- lm(quality ~ alcohol, data = ww)
+qual.alco2 <- lm(quality ~ alcohol, data = ww[ww$quality>4, ])
+qual.dens <- lm(quality ~ density, data = ww)
+mtable(qual.alco1, qual.alco2, qual.dens, sdigits = 3)
 ```
-Alcohol can explain 19% of the variance in quality score and density can 10%.
+Alcohol can explain 19% of the variance in quality score and density can 10%. The subset of data with quality higher than 4 shows that alcohol can explain 22% of the variance in quality.
 
 ### Categorical variable analysis: boxplot or density plot
 ```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
@@ -545,8 +546,8 @@ I will create boxplots of all physicochemical properties grouped by quality.cons
 #### Is there any noticeable trend from low and middle to high quality, which was not detected from correllation analysis?
 ```{r echo=FALSE, fig.height=4, fig.width=3, message=FALSE, warning=FALSE}
 # Create a function to generate a boxplot with x-axis as quality.con and y-axis as input column
-Plot2 <- function(col, quality, lab) {
-  qplot(x= quality, y= col, geom = 'boxplot', ylab = lab)+ 
+Plot2 <- function(col, Quality, lab) {
+  qplot(x= Quality, y= col, geom = 'boxplot', ylab = lab)+ 
   geom_jitter(alpha = 1/10, color = 'royalblue')
 }
 
@@ -773,11 +774,13 @@ The PC1 is positively correlated with alcohol but negatively correlated with den
 #### Visualize PCA
 ```{r, echo=FALSE, fig.height=6, fig.width=7}
 # Create a biplot of individuals as points and variables as arrows
-fviz_pca_biplot(ww_trans.pca, repel=TRUE, # repel to avoid overplotting text labels
+final_pca <- fviz_pca_biplot(ww_trans.pca, repel=TRUE, # repel to avoid overplotting text labels
                 label="var", col.var="blue", # show labels in blue and only for variables
                 habillage=ww$quality.con, palette="RdBu", # color points by grouping
                 title="PCA biplot grouped by quality")+ # change title
     theme_dark()
+
+final_pca
 ```
 As I expect, there is no distinct grouping by quality.con. The classes of quality are highly overlapping. However, there is a general trend of low to high quality from left top to right bottom, where most low quality wines are on the left side (Dim1<0) while most high quality wines are on the right side (Dim1>0). Thus, the quality seems positively related to Dim1 or PC1 which is highly influence by alcohol, density, sugar, NaCl, and total SO2.
 
@@ -910,7 +913,7 @@ Yes, to some degree, the combination of two or more variables improved predictio
 I mostly focused on performing PCA for multivariate analysis and I performed PCA on all variables and compared to PCA on 5 variables which were likely shown to be associated with quality. The PCA plot by the subset of variables did not really improve the separation of quality classes and there was a little improvement on the correlation between PC1 and quality. I may have chosen the variables are highly correlated each other (they seem dependent to each other) that does not really add any information to it.  
 
 ### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
-As I mentioned previously, the linear model with combination of variables help increase a little bit of r-squared value, but not by much. It indicates that a linear model probably is not the best fit for this dataset. As the distribution of sugar contents (bimodality) and free&total SO2 and acetic acid (threshold effects) hinted, decision tree could be a good candidate, where a model predicts the value of a target variable by learning simple decision rules inferred from the data features. 
+As I mentioned previously, the linear model with combination of variables help increase a little bit of r-squared value, but not by much. And the prediction power is lower than 45% where predicting all wines as median quality (6) irrespect to the physicochemical properties. It indicates that a linear model probably is not the best fit for this dataset. As the distribution of sugar contents (bimodality) and free&total SO2 and acetic acid (threshold effects) hinted, decision tree could be a good candidate, where a model predicts the value of a target variable by learning simple decision rules inferred from the data features. 
 
 
 ------
@@ -918,31 +921,61 @@ As I mentioned previously, the linear model with combination of variables help i
 # 3. Final Plots and Summary
 
 ### 3.1 Plot One
-```{r echo=FALSE, Plot_One}
-
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create a bar plot, similar to histogram
+plot(ww$quality.order, xlab = 'Wine Quality Score Evaluated by Experts',
+     ylab= "Frequency", main="Distribution of White Wine Quality") 
+text(0.75, 150, "0.4%")
+text(1.9, 300, "3.3%")
+text(3.1, 1600, "29.8%")
+text(4.3, 1900, "44.9%")
+text(5.5, 1000, "18.0%")
+text(6.7, 270, "3.6%")
+text(7.9, 150, "0.1%")
+text(7, 1900, "(group size / total) * 100%")
 ```
 
 ### Description One
-
+Quality was normally distributed. Quality score 6 is the most common quality for white wines (45%). Most white wines had a quality score between 5 and 6, which accounting for 75% of the total. If I predict that a product of white wine is in quality of 5 or 6, there will be 75% chance to be correct. White wines with a quality score between 5 and 7 and that between 4 and 8 were 92.6% and 99.5%, respectively, wherease it is very rare to be quality 3 or 9. 
 
 ### 3.2 Plot Two
-```{r echo=FALSE, Plot_Two}
+```{r echo=FALSE, fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
+Plot2(ww$alcohol, ww$quality.order, "Alcohol Content (% by volume)")+
+  ggtitle("Distribution of Alcohol by Quality")+
+  annotate("text", x=1, y=10.7, label="10.5", color="red")+
+  annotate("text", x=2, y=10.3, label="10.1", color="red")+
+  annotate("text", x=3, y=9.7, label="9.5", color="red")+
+  annotate("text", x=4, y=10.7, label="10.5", color="red")+
+  annotate("text", x=5, y=11.6, label="11.4", color="red")+
+  annotate("text", x=6, y=12.2, label="12.0", color="red")+
+  annotate("text", x=7, y=12.6, label="12.5", color="red")+
+  annotate("text", x=1, y=14.5, label="Median", color="red")
 
 ```
 
 ### Description Two
-
+Among physicochemical properties, alcohol has shown to have the strongest linear relationship with quality, especially between 5 and 9. In general, quality increases as alcohol content increases. However, due to such high variability in alcohol within the quality class, alcohol can explain only about 20% of variance in quality with a Pearson's correlation coefficient of 0.436. 
 
 ### 3.3 Plot Three
-```{r echo=FALSE, Plot_Three}
-
+```{r echo=FALSE, fig.height=6, fig.width=7, message=FALSE, warning=FALSE}
+final_pca
 ```
 
 ### Description Three
+PCA biplot was contructed by 1st dimiention scores on the x-axis and 2nd dimention scores on the y-axis and the points represent individual observations in the dataset, which were color-encoded by quality groups (<6, 6, and >6). The arrows represent correlation of each variables with the two dimention scores: the direction of arrow represents either positive or negative correlation, and the length represents magnitude of correlation coefficient. For example, the arrow of alcohol heads for the positive direction of 1st dimention score with relativel high length. This means that alcohol is strongly and positively correlated with Dim1.
 
+There was a general trend from low to high quality as shifting from left to right, although the separation of groups was not quite clear. One of interesting interactions was that some of physicochemical properties were very dependant on each other. Increase in density of wines was influenced largely by decrease in alcohol and increase in most solutes such as sugar, NaCl, and SO2. In addition, increase in pH (decrease in acidity) was affected by decrease in tartaric acid and citric acid. This plot helped understand the relationship among the physicochemical properties rather than suggest a prediction for sensory quality.
+
+One of my speculations on these trends with wine quality is that too much amount of any solutes might bring unpleasant smell and taste to wine, which was suggested by the arrows of all solutes were heading to the left where low quality wines more likely present around these coordinant. The high amount of solutes could be resulted from too early or too late harvesting time of wine product. If it is too early, a large amount of sugar remains in the wine, resulting in being too sweat. If it is too late, alcohol decompose to acetic acid, resulting in being too sour. 
+
+Overall, I have learned that predicting the quality of wine is very complicated and hard to accomplished solely based on physicochemical properties given. The limitation of these properties is only examing chemicals in the liquid stage. So, any gas form of chemicals such as aroma can be complementary information.   
 ------
 
 # 4. Reflection
+One of my frustrations was tuning the plots, like adjusting bin size, font, color, label, etc. Although I knew that all the plots did not need to be perfect at the exploring stage, these tuning steps to increase aesthetic factors took me a large chunk of time. To figure how to change the visual factors I had to search 
+
+Compare to python
+
 # 5. Sources
 - [relative frequency by a column]( http://www.r-tutor.com/elementary-statistics/qualitative-data/relative-frequency-distribution-qualitative-data)
 - [returning multiple objects in function](https://stackoverflow.com/questions/8936099/returning-multiple-objects-in-an-r-function)
@@ -956,3 +989,5 @@ As I mentioned previously, the linear model with combination of variables help i
 - [draw 3d pca](http://planspace.org/2013/02/03/pca-3d-visualization-and-clustering-in-r/)
 - [rgl plot3d color points by group](http://r.789695.n4.nabble.com/plot3d-color-points-by-group-td3312955.html)
 - [add an image to markdown](https://rpubs.com/RatherBit/90926)
+- [add text on barplot](https://stats.stackexchange.com/questions/3879/how-to-put-values-over-bars-in-barplot-in-r)
+- [add annotation to ggplot](http://ggplot2.tidyverse.org/reference/annotate.html)
