@@ -12,5 +12,10 @@ In this project, I explored a white wine quality data set for [Portuguese "Vinho
 - wineQualityReds.csv: supplementary data file
 - wine_project.Rmd: data exploration and answers to [the questions](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58af99ac_projecttemplate/projecttemplate.rmd)
 - wine_project.html: html knitted from wine_project.Rmd
-- 3d_pca.JPG: image file of snapshot of interacting plot
-- 3d_pca_subset.JPG: image file of snapshot of interacting plot
+- wine_project1.html: html knitted from wine_project.Rmd, 1st project submission draft 
+- 3d_pca.JPG: image file of snapshot of 3d interacting plot
+- 3d_pca_subset.JPG: image file of snapshot of 3d interacting plot
+- chisq_all.jpg: image file of snapshot of interacting plot
+- chisq_rem_1.jpg: image file of snapshot of interacting plot
+- chisq_trans.jpg: image file of snapshot of interacting plot
+- chisq_trans_nosug.jpg: image file of snapshot of interacting plot
