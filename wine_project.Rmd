@@ -96,7 +96,7 @@ str(ww$quality.order)
 
 ```{r echo=FALSE, fig.height=3, fig.width=3, message=FALSE, warning=FALSE}
 # Create a bar plot, similar to histogram
-plot(ww$quality.order, xlab = 'quality.order') 
+plot(ww$quality.order, xlab = 'quality.order', ylab='count') 
 
 # Create a function to generate a proportion table in percentage
 ProportionTable <- function(col) {
@@ -119,9 +119,9 @@ ww$quality.con <- cut(ww$quality, c(2, 5, 6, 9)) # conservative cutoff
 ww$quality.lib <- cut(ww$quality, c(2, 4, 7, 9)) # liberal cutoff
 
 # Craete distribution plots and proportion tables for the new variables
-plot(ww$quality.con, xlab = 'quality.con')
+plot(ww$quality.con, xlab = 'quality.con', ylab='count')
 ProportionTable(ww$quality.con)
-plot(ww$quality.lib, xlab = 'quality.lib')
+plot(ww$quality.lib, xlab = 'quality.lib', ylab='count')
 ProportionTable(ww$quality.lib)
 ```
 I created 2 new variables; each includes 3-classes. One is that I named **quality.con** which cuts off the quality in a conservative way. This considers that wines with the score <6 are low quality, 6 are medium quality, and >6 are high quality. 
@@ -171,7 +171,7 @@ ww$alcohol.body <- cut(ww$alcohol,
 # Create a function to generate a histogram with color encoding of categorical variable,
 # a table, and a proportion table
 Plot1 <- function(alcohol.group) {
-  a <- plot(alcohol.group)
+  a <- plot(alcohol.group, xlab='alcohol', ylab='count')
   b <- table(alcohol.group)
   c <- ProportionTable(alcohol.group)
   return(list(a, b, c))
@@ -776,7 +776,7 @@ The correlation with quality is improved a little bit by separating into two gro
 ### Relationship between freeSO2 vs. quality
 The density plot of freeSO2 showed an interesting trend although linear regression and boxplot did not show any promising trends. Low quality wines are relatively more distributed to high-end as well as low-end freeSO2 while medium and high quality wines remain at the middle level of freeSO2. I wonder if too high or too low amounts of freeSO2 are related to low quality of wine.
 
-#### What are the distributions of quality in the sub-groups by freeSO2?
+#### What are the distributions of quality in the bucket by freeSO2?
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Create a new varaible by cutting into 4 buckets
 ww$freeSO2.bucket <- cut(ww$free.sulfur.dioxide,
@@ -807,7 +807,7 @@ Majority of wines (82%) have free SO2 below 50 mg/L. The density plot shows that
 ### Relationship between totalSO2 vs. quality
 Total SO2 has a similar trend but a lesser extent like freeSO2 has.
 
-#### What are the distributions of quality in the sub-groups by totalSO2?
+#### What are the distributions of quality in the bucket by totalSO2?
 
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Create a new varaible by cutting into 4 buckets
@@ -823,7 +823,7 @@ Similarly, the quality of extreme case (0.9% of the wine samples) where total SO
 
 The distribution of acetic acid by quality also suggests the possibility of that high-end values are an indicator of low quality wine.  
 
-#### What are the distributions of quality in the sub-groups by acetic acid?
+#### What are the distributions of quality in the bucket by acetic acid?
 
 ```{r echo=FALSE, fig.height=3, fig.width=6, message=FALSE, warning=FALSE}
 # Create new varaible by cutting into 3 buckets
